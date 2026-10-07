@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Sports Film Room</title>
   
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ea580c' stroke='%230f172a' stroke-width='6'/%3E%3Cpath d='M50 4 v92 M4 50 h92' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3Cpath d='M17 17 C35 32 35 68 17 83' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3Cpath d='M83 17 C65 32 65 68 83 83' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3Cpath d='M83 17 C65 32 65 68 83 83' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23ea580c' stroke='%230f172a' stroke-width='6'/%3E%3Cpath d='M50 4 v92 M4 50 h92' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3Cpath d='M17 17 C35 32 35 68 17 83' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3Cpath d='M83 17 C65 32 65 68 83 83' stroke='%230f172a' stroke-width='5' fill='none'/%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -347,24 +347,6 @@
       </div>
 
       <div>
-        <label class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-2">Play Efficiency / Outcome</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button type="button" id="editClipOutcome_positive" onclick="setEditModalOutcome('positive')" class="py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition">
-            <span class="material-symbols-outlined" style="font-size: 18px;">thumb_up</span>
-            Positive
-          </button>
-          <button type="button" id="editClipOutcome_neutral" onclick="setEditModalOutcome('neutral')" class="py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition">
-            <span class="material-symbols-outlined" style="font-size: 18px;">remove_circle</span>
-            Neutral
-          </button>
-          <button type="button" id="editClipOutcome_negative" onclick="setEditModalOutcome('negative')" class="py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition">
-            <span class="material-symbols-outlined" style="font-size: 18px;">thumb_down</span>
-            Negative
-          </button>
-        </div>
-      </div>
-
-      <div>
         <label class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-2">Categories (Select Multiple)</label>
         <div id="editClipCategoryBadges" class="flex flex-wrap gap-1.5 p-2 bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm max-h-28 overflow-y-auto"></div>
       </div>
@@ -581,71 +563,6 @@
     </div>
   </div>
 
-  <!-- ================= EDIT USER MODAL (RBAC & PW RESET) ================= -->
-  <div id="editUserModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm">
-    <div class="md-dialog bg-md-surface-container-lowest dark:bg-md-dark-surface-container-low border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-3 w-full max-w-lg flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-md-outline-variant dark:border-md-dark-outline-variant pb-3">
-        <div>
-          <h3 class="text-lg font-medium text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined" style="font-size: 22px;">manage_accounts</span>
-            Edit User: <span id="editUserModalUsername" class="text-md-primary dark:text-md-dark-primary font-bold"></span>
-          </h3>
-          <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Update role, assign game films, or reset password</p>
-        </div>
-        <button onclick="closeEditUserModal()" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-10 h-10 p-0 rounded-full">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <input type="hidden" id="editUserIdHidden" />
-
-      <div>
-        <label class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1">Role</label>
-        <select id="editUserRoleSelect" onchange="toggleEditUserRoleFields()" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface">
-          <option value="coach">Coach (Can edit videos, mark events, slice clips)</option>
-          <option value="player">Player (Dedicated profile view of personal plays)</option>
-          <option value="viewer">Viewer (Read-only scouting: watch & export)</option>
-          <option value="admin">Admin (Full project & user management)</option>
-        </select>
-      </div>
-
-      <div id="editUserPlayerBox" class="hidden">
-        <label class="text-xs font-medium text-md-tertiary dark:text-md-dark-tertiary block mb-1">Assign to Player</label>
-        <select id="editUserPlayerSelect" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-medium"></select>
-      </div>
-
-      <div id="editUserProjectAccessBox">
-        <div class="flex items-center justify-between mb-1">
-          <label class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Game Film Access</label>
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="toggleAllEditProjects(true)" class="text-[11px] text-md-primary dark:text-md-dark-primary hover:underline">Select All</button>
-            <span class="text-xs text-md-outline">|</span>
-            <button type="button" onclick="toggleAllEditProjects(false)" class="text-[11px] text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:underline">Clear</button>
-          </div>
-        </div>
-        <div id="editUserProjectCheckboxes" class="flex flex-col gap-1.5 max-h-36 overflow-y-auto p-2 bg-md-surface-container-high dark:bg-md-dark-surface-container-high rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant text-xs"></div>
-        <p class="text-[11px] text-md-on-surface-variant dark:text-md-dark-on-surface-variant mt-1">Check all game films this coach or viewer is permitted to access.</p>
-      </div>
-
-      <div class="p-3 bg-md-surface-container dark:bg-md-dark-surface-container rounded-md-md border border-md-outline-variant dark:border-md-dark-outline-variant flex flex-col gap-2">
-        <label class="text-xs font-medium text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-md-tertiary dark:text-md-dark-tertiary" style="font-size: 16px;">lock_reset</span>
-          Reset Password
-        </label>
-        <input type="password" id="editUserNewPassword" placeholder="Enter new password (leave blank to keep current)" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface">
-        <p class="text-[11px] text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">Enter a new password (min 4 chars) to reset this user's password.</p>
-      </div>
-
-      <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-md-outline-variant dark:border-md-dark-outline-variant">
-        <button onclick="closeEditUserModal()" class="md-btn-outlined border-md-outline dark:border-md-dark-outline text-md-primary dark:text-md-dark-primary">Cancel</button>
-        <button id="saveEditUserBtn" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary">
-          <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
-          Save User Changes
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- ================= CREATE / EDIT PROJECT MODAL ================= -->
   <div id="projectModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm max-h-[92vh] overflow-y-auto">
     <div class="md-dialog bg-md-surface-container-lowest dark:bg-md-dark-surface-container-low border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-3 w-full max-w-lg flex flex-col gap-4">
@@ -838,7 +755,6 @@
         <button id="tabWorkspaceBtn" class="hidden btn-future text-future-lightMuted dark:text-future-darkMuted hover:text-future-lightText dark:hover:text-white !py-1.5 !px-3.5 !text-xs">
           <span class="material-symbols-outlined" style="font-size: 16px;">play_circle</span>
           <span class="hidden lg:inline">Current Tape</span>
-        </button>
       </nav>
     </div>
 
@@ -1177,14 +1093,6 @@
                 <option value="created_desc">Newest Created</option>
               </select>
             </div>
-            <div>
-              <select id="outcomeFilterSelect" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-medium">
-                <option value="ALL" selected>All Play Outcomes</option>
-                <option value="positive">👍 Positive Plays Only</option>
-                <option value="neutral">⚪ Neutral Plays Only</option>
-                <option value="negative">👎 Negative Plays Only</option>
-              </select>
-            </div>
           </div>
 
           <div id="clipList" class="flex-1 overflow-y-auto flex flex-col gap-2.5 mt-1"></div>
@@ -1251,7 +1159,6 @@
     let editingRosterIndex = null;
     let currentClipToReel = null;
     let selectedProfilePlayer = null;
-    let cachedUsers = [];
     let playerPhotos = {};
 
     let editingClipId = null;
@@ -1690,110 +1597,6 @@
       }
     }
 
-    function toggleEditUserRoleFields() {
-      const role = document.getElementById('editUserRoleSelect').value;
-      const playerBox = document.getElementById('editUserPlayerBox');
-      const projectBox = document.getElementById('editUserProjectAccessBox');
-
-      if (role === 'player') {
-        playerBox.classList.remove('hidden');
-        projectBox.classList.add('hidden');
-        
-        const select = document.getElementById('editUserPlayerSelect');
-        const allPlayers = new Set();
-        rosters.forEach(r => {
-          (r.players || []).forEach(p => {
-            if (p && !p.toLowerCase().includes('unassigned')) allPlayers.add(p);
-          });
-        });
-        select.innerHTML = Array.from(allPlayers).map(p => `<option value="${p}">${p}</option>`).join('');
-      } else if (role === 'admin') {
-        playerBox.classList.add('hidden');
-        projectBox.classList.add('hidden');
-      } else {
-        playerBox.classList.add('hidden');
-        projectBox.classList.remove('hidden');
-      }
-    }
-
-    window.toggleAllEditProjects = (checkAll) => {
-      document.querySelectorAll('.edit-project-assign-cb').forEach(cb => {
-        cb.checked = checkAll;
-      });
-    };
-
-    window.openEditUserModal = (userId) => {
-      const u = cachedUsers.find(x => x.id === userId);
-      if (!u) return;
-
-      document.getElementById('editUserIdHidden').value = u.id;
-      document.getElementById('editUserModalUsername').innerText = u.username;
-      document.getElementById('editUserRoleSelect').value = u.role;
-      document.getElementById('editUserNewPassword').value = '';
-
-      const playerSelect = document.getElementById('editUserPlayerSelect');
-      const allPlayers = new Set();
-      rosters.forEach(r => {
-        (r.players || []).forEach(p => {
-          if (p && !p.toLowerCase().includes('unassigned')) allPlayers.add(p);
-        });
-      });
-      playerSelect.innerHTML = Array.from(allPlayers).map(p => `<option value="${p}">${p}</option>`).join('');
-      if (u.player_name) playerSelect.value = u.player_name;
-
-      const container = document.getElementById('editUserProjectCheckboxes');
-      const userProjs = u.project_ids || [];
-      const hasAll = userProjs.includes('*');
-
-      container.innerHTML = projects.map(p => {
-        const isChecked = hasAll || userProjs.includes(p.id);
-        const sportEmoji = p.sport === 'Football' ? '🏈' : p.sport === 'Soccer' ? '⚽' : '🏀';
-        return `
-          <label class="md-checkbox py-1">
-            <input type="checkbox" value="${p.id}" ${isChecked ? 'checked' : ''} class="edit-project-assign-cb">
-            <span class="md-checkbox-box border-md-outline dark:border-md-dark-outline bg-md-surface-container-high dark:bg-md-dark-surface-container-high text-md-on-primary dark:text-md-dark-on-primary checked:bg-md-primary dark:checked:bg-md-dark-primary checked:border-transparent"></span>
-            <span class="truncate font-medium text-md-on-surface dark:text-md-dark-on-surface">${sportEmoji} ${p.name}</span>
-          </label>
-        `;
-      }).join('');
-
-      toggleEditUserRoleFields();
-      document.getElementById('editUserModal').classList.remove('hidden');
-    };
-
-    window.closeEditUserModal = () => {
-      document.getElementById('editUserModal').classList.add('hidden');
-    };
-
-    document.getElementById('saveEditUserBtn').onclick = async () => {
-      const userId = document.getElementById('editUserIdHidden').value;
-      const role = document.getElementById('editUserRoleSelect').value;
-      const checkedProjs = Array.from(document.querySelectorAll('.edit-project-assign-cb:checked')).map(cb => cb.value);
-      const assignedPlayer = role === 'player' ? document.getElementById('editUserPlayerSelect').value : null;
-      const newPass = document.getElementById('editUserNewPassword').value.trim();
-
-      const payload = {
-        role: role,
-        project_ids: (role === 'admin' || role === 'player') ? ["*"] : checkedProjs,
-        player_name: assignedPlayer,
-        password: newPass || undefined
-      };
-
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        closeEditUserModal();
-        loadUsersList();
-      } else {
-        const err = await res.json();
-        alert(err.detail || "Failed to update user");
-      }
-    };
-
     function populateProjectAssignmentCheckboxes() {
       const container = document.getElementById('projectCheckboxes');
       container.innerHTML = projects.map(p => {
@@ -1843,41 +1646,30 @@
     async function loadUsersList() {
       const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) return;
-      cachedUsers = await res.json();
+      const users = await res.json();
       const container = document.getElementById('usersList');
-      container.innerHTML = cachedUsers.map(u => {
+      container.innerHTML = users.map(u => {
         const isSelf = u.id === currentUser.id;
-        const gamesCount = (u.project_ids || []).includes('*') ? 'All Games' : `${(u.project_ids || []).length} Games`;
         const roleColors = {
-          admin: 'bg-md-error-container dark:bg-md-dark-error-container text-md-on-error-container dark:text-md-dark-error-container border-md-error dark:border-md-dark-error',
+          admin: 'bg-md-error-container dark:bg-md-dark-error-container text-md-on-error-container dark:text-md-dark-on-error-container border-md-error dark:border-md-dark-error',
           coach: 'bg-md-tertiary-container dark:bg-md-dark-tertiary-container text-md-on-tertiary-container dark:text-md-dark-on-tertiary-container border-md-tertiary dark:border-md-dark-tertiary',
           player: 'bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container border-md-secondary dark:border-md-dark-secondary',
           viewer: 'bg-md-primary-container dark:bg-md-dark-primary-container text-md-on-primary-container dark:text-md-dark-on-primary-container border-md-primary dark:border-md-dark-primary'
         };
         return `
-          <div class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-3 rounded-md-md border border-md-outline-variant dark:border-md-dark-outline-variant flex flex-wrap justify-between items-center gap-2 text-sm">
+          <div class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-3 rounded-md-md border border-md-outline-variant dark:border-md-dark-outline-variant flex justify-between items-center text-sm">
             <div class="flex items-center gap-2 overflow-hidden">
               <span class="material-symbols-outlined text-md-on-surface-variant dark:text-md-dark-on-surface-variant" style="font-size: 20px;">account_circle</span>
-              <span class="font-medium text-md-on-surface dark:text-md-dark-on-surface truncate max-w-[120px]">${u.username}</span>
+              <span class="font-medium text-md-on-surface dark:text-md-dark-on-surface truncate max-w-[140px]">${u.username}</span>
               <span class="text-xs font-mono uppercase px-2 py-0.5 rounded-full border ${roleColors[u.role] || 'bg-md-surface-container dark:bg-md-dark-surface-container text-md-on-surface-variant dark:text-md-dark-on-surface-variant'} font-medium">${u.role}</span>
-              ${u.role !== 'admin' && u.role !== 'player' ? `<span class="text-[11px] font-mono text-md-on-surface-variant dark:text-md-dark-on-surface-variant bg-md-surface-container dark:bg-md-dark-surface-container px-2 py-0.5 rounded-full">${gamesCount}</span>` : ''}
               ${u.player_name ? `<span class="text-xs text-md-tertiary dark:text-md-dark-tertiary font-medium truncate">(${u.player_name})</span>` : ''}
             </div>
-            <div class="flex items-center gap-1 ml-auto">
-              <button onclick="openEditUserModal('${u.id}')" class="md-btn-text text-md-primary dark:text-md-dark-primary !py-1 !px-2 !rounded-full !text-xs" title="Edit Role & Game Access">
-                <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
-                Edit
+            ${!isSelf ? `
+              <button onclick="deleteUserAccount('${u.id}')" class="md-btn-text text-md-error dark:text-md-dark-error hover:bg-md-error-container/20 dark:hover:bg-md-dark-error-container/20 !py-1 !px-2 !rounded-full !text-xs">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                Delete
               </button>
-              <button onclick="promptResetUserPassword('${u.id}', '${u.username}')" class="md-btn-text text-md-tertiary dark:text-md-dark-tertiary !py-1 !px-2 !rounded-full !text-xs" title="Reset Password">
-                <span class="material-symbols-outlined" style="font-size: 16px;">lock_reset</span>
-                Reset PW
-              </button>
-              ${!isSelf ? `
-                <button onclick="deleteUserAccount('${u.id}')" class="md-btn-text text-md-error dark:text-md-dark-error hover:bg-md-error-container/20 dark:hover:bg-md-dark-error-container/20 !py-1 !px-2 !rounded-full !text-xs" title="Delete Account">
-                  <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
-                </button>
-              ` : '<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic px-2">Active</span>'}
-            </div>
+            ` : '<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">Active</span>'}
           </div>
         `;
       }).join('');
@@ -1890,23 +1682,6 @@
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { loadUsersList(); }
-    };
-
-    window.promptResetUserPassword = async (userId, username) => {
-      const newPass = prompt(`Reset password for user "${username}":\nEnter new password (min 4 characters):`);
-      if (!newPass) return;
-      if (newPass.trim().length < 4) return alert("Password must be at least 4 characters.");
-
-      const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ password: newPass.trim() })
-      });
-      if (res.ok) {
-        alert(`Password for "${username}" successfully updated.`);
-      } else {
-        alert("Failed to reset password.");
-      }
     };
 
     // --- Project Create & Edit Modal ---
@@ -3538,7 +3313,6 @@
         startTime: sTime,
         endTime: eTime,
         categories: initialCategories,
-        outcome: "neutral",
         players: initialPlayers,
         annotation: "",
         notes: ""
@@ -3591,14 +3365,6 @@
       savePendingMarks();
       renderPendingMarks();
     }
-
-    window.setPendingMarkOutcome = (markId, outcome) => {
-      const mark = pendingMarks.find(m => m.id === markId);
-      if (!mark) return;
-      mark.outcome = outcome;
-      savePendingMarks();
-      renderPendingMarks();
-    };
 
     window.updatePendingAnnotation = (id, val) => {
       const mark = pendingMarks.find(m => m.id === id);
@@ -3665,7 +3431,6 @@
       container.innerHTML = pendingMarks.map(m => {
         const markCats = m.categories || [m.category || "General"];
         const markPlayers = m.players || [m.player || "Unassigned / Team Play"];
-        const mOutcome = m.outcome || "neutral";
 
         return `
           <div id="card_${m.id}" class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-3 rounded-md-md border ${activePendingId === m.id ? 'border-md-tertiary ring-2 ring-md-tertiary' : 'border-md-outline-variant dark:border-md-dark-outline-variant'} flex flex-col gap-2.5 shadow-sm">
@@ -3679,21 +3444,6 @@
               <button type="button" onclick="discardPendingMark('${m.id}')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-error dark:hover:text-md-dark-error !p-1 !rounded-full">
                 <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
               </button>
-            </div>
-
-            <div>
-              <label class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1">Play Outcome Indicator</label>
-              <div class="grid grid-cols-3 gap-1.5">
-                <button type="button" onclick="setPendingMarkOutcome('${m.id}', 'positive')" class="py-1.5 px-2 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1 border transition ${mOutcome === 'positive' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10'}">
-                  <span class="material-symbols-outlined" style="font-size: 16px;">thumb_up</span> Positive
-                </button>
-                <button type="button" onclick="setPendingMarkOutcome('${m.id}', 'neutral')" class="py-1.5 px-2 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1 border transition ${mOutcome === 'neutral' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10'}">
-                  <span class="material-symbols-outlined" style="font-size: 16px;">remove_circle</span> Neutral
-                </button>
-                <button type="button" onclick="setPendingMarkOutcome('${m.id}', 'negative')" class="py-1.5 px-2 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1 border transition ${mOutcome === 'negative' ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10'}">
-                  <span class="material-symbols-outlined" style="font-size: 16px;">thumb_down</span> Negative
-                </button>
-              </div>
             </div>
 
             <div>
@@ -3785,7 +3535,6 @@
         end_time: mark.endTime,
         categories: mark.categories || [categories[0] || "Play"],
         players: mark.players || ["Unassigned / Team Play"],
-        outcome: mark.outcome || "neutral",
         annotation: (mark.annotation || "").trim().slice(0, 100),
         notes: ""
       };
@@ -3846,7 +3595,6 @@
     function applyClipFilters() {
       const catFilter = document.getElementById('clipFilter').value;
       const playerFilter = document.getElementById('playerFilterSelect').value;
-      const outcomeFilter = document.getElementById('outcomeFilterSelect')?.value || 'ALL';
       const sortOrder = document.getElementById('clipSortSelect')?.value || 'time_asc';
 
       let filtered = cachedClips;
@@ -3856,9 +3604,6 @@
       }
       if (playerFilter !== 'ALL') {
         filtered = filtered.filter(c => (c.players || [c.player]).includes(playerFilter));
-      }
-      if (outcomeFilter !== 'ALL') {
-        filtered = filtered.filter(c => (c.outcome || 'neutral').toLowerCase() === outcomeFilter.toLowerCase());
       }
 
       filtered = [...filtered].sort((a, b) => {
@@ -3888,31 +3633,16 @@
         const clipTags = c.categories || [c.category || "General"];
         const clipPlayers = c.players || [c.player || "Unassigned / Team Play"];
         const clipStartTime = (c.start_time !== undefined && c.start_time !== null) ? c.start_time : c.startTime;
-        const cOutcome = c.outcome || "neutral";
 
         return `
           <div class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-3 rounded-md-md border border-md-outline-variant dark:border-md-dark-outline-variant flex flex-col gap-1.5 shadow-sm">
             <div class="flex justify-between items-start gap-2">
-              <div class="flex flex-wrap items-center gap-1">
+              <div class="flex flex-wrap gap-1">
                 ${clipTags.map(t => `<span class="md-chip selected bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary border-transparent !py-0.5 !px-2 !text-xs">${t}</span>`).join('')}
               </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <!-- Quick Outcome Toggles -->
-                <div class="flex items-center bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant p-0.5" title="Play Outcome (click icon to set)">
-                  <button type="button" onclick="setClipOutcomeQuick('${c.id}', 'positive')" class="p-1 rounded transition ${cOutcome === 'positive' ? 'bg-emerald-600 text-white font-bold' : 'text-md-on-surface-variant hover:text-emerald-500'}" title="Mark Positive">
-                    <span class="material-symbols-outlined" style="font-size: 15px;">thumb_up</span>
-                  </button>
-                  <button type="button" onclick="setClipOutcomeQuick('${c.id}', 'neutral')" class="p-1 rounded transition ${cOutcome === 'neutral' ? 'bg-amber-600 text-white font-bold' : 'text-md-on-surface-variant hover:text-amber-500'}" title="Mark Neutral">
-                    <span class="material-symbols-outlined" style="font-size: 15px;">remove_circle</span>
-                  </button>
-                  <button type="button" onclick="setClipOutcomeQuick('${c.id}', 'negative')" class="p-1 rounded transition ${cOutcome === 'negative' ? 'bg-rose-600 text-white font-bold' : 'text-md-on-surface-variant hover:text-rose-500'}" title="Mark Negative">
-                    <span class="material-symbols-outlined" style="font-size: 15px;">thumb_down</span>
-                  </button>
-                </div>
-                <span class="text-xs font-mono font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant">
-                  ${clipStartTime !== undefined && clipStartTime !== null ? `<span class="text-md-primary dark:text-md-dark-primary font-bold">${formatTime(clipStartTime)}</span> • ` : ''}${c.duration}s
-                </span>
-              </div>
+              <span class="text-xs font-mono font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant shrink-0">
+                ${clipStartTime !== undefined && clipStartTime !== null ? `<span class="text-md-primary dark:text-md-dark-primary font-bold">${formatTime(clipStartTime)}</span> • ` : ''}${c.duration}s
+              </span>
             </div>
             
             <div class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant font-medium mt-0.5 flex flex-wrap items-center gap-1">
@@ -3959,43 +3689,7 @@
       }).join('');
     }
 
-    window.setClipOutcomeQuick = async (clipId, outcome) => {
-      const clip = cachedClips.find(c => c.id === clipId);
-      if (clip) clip.outcome = outcome;
-      applyClipFilters();
-
-      try {
-        const res = await fetch(`/api/clips/${clipId}/outcome`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ outcome })
-        });
-        if (!res.ok) {
-          loadClips();
-        }
-      } catch(e) {
-        console.error("Failed to update outcome", e);
-      }
-    };
-
     // --- Saved Clip Edit Modal Logic ---
-    let editModalOutcome = "neutral";
-
-    window.setEditModalOutcome = (outcome) => {
-      editModalOutcome = outcome;
-      updateEditModalOutcomeUI();
-    };
-
-    function updateEditModalOutcomeUI() {
-      const pos = document.getElementById('editClipOutcome_positive');
-      const neu = document.getElementById('editClipOutcome_neutral');
-      const neg = document.getElementById('editClipOutcome_negative');
-
-      pos.className = `py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition ${editModalOutcome === 'positive' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}`;
-      neu.className = `py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition ${editModalOutcome === 'neutral' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-amber-600 dark:text-amber-400 border-amber-500/30'}`;
-      neg.className = `py-2 px-3 rounded-md-sm text-xs font-medium flex items-center justify-center gap-1.5 border transition ${editModalOutcome === 'negative' ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest text-rose-600 dark:text-rose-400 border-rose-500/30'}`;
-    }
-
     window.openEditClipModal = (clipId) => {
       const clip = cachedClips.find(c => c.id === clipId);
       if (!clip) return;
@@ -4003,8 +3697,6 @@
 
       editModalSelectedCategories = [...(clip.categories || [clip.category || "General"])];
       editModalSelectedPlayers = [...(clip.players || [clip.player || "Unassigned / Team Play"])];
-      editModalOutcome = clip.outcome || "neutral";
-      updateEditModalOutcomeUI();
 
       const annot = clip.annotation || '';
       document.getElementById('editClipAnnotationInput').value = annot;
@@ -4085,7 +3777,6 @@
       const payload = {
         categories: editModalSelectedCategories,
         players: editModalSelectedPlayers,
-        outcome: editModalOutcome,
         annotation: (document.getElementById('editClipAnnotationInput').value || "").trim().slice(0, 100),
         start_time: startTime,
         end_time: endTime,
@@ -4110,7 +3801,6 @@
 
     document.getElementById('clipFilter').onchange = applyClipFilters;
     document.getElementById('playerFilterSelect').onchange = applyClipFilters;
-    document.getElementById('outcomeFilterSelect').onchange = applyClipFilters;
     document.getElementById('clipSortSelect').onchange = applyClipFilters;
 
     window.deleteClip = async (id) => {
@@ -4211,4 +3901,406 @@
         imgEl.classList.remove('hidden');
         placeholderEl.classList.add('hidden');
         if (removeBtn) removeBtn.classList.remove('hidden');
-        if (uploadText) uploadText.innerText = 'Change Picture
+        if (uploadText) uploadText.innerText = 'Change Picture';
+      } else {
+        imgEl.src = '';
+        imgEl.classList.add('hidden');
+        placeholderEl.classList.remove('hidden');
+        if (removeBtn) removeBtn.classList.add('hidden');
+        if (uploadText) uploadText.innerText = 'Upload Picture';
+      }
+
+      if (canEdit) {
+        if (overlayBtn) overlayBtn.classList.remove('hidden');
+        if (actionsContainer) actionsContainer.classList.remove('hidden');
+      } else {
+        if (overlayBtn) overlayBtn.classList.add('hidden');
+        if (actionsContainer) actionsContainer.classList.add('hidden');
+      }
+    }
+
+    async function handlePlayerPhotoUpload(file) {
+      const targetPlayer = selectedProfilePlayer || (currentUser && currentUser.role === 'player' ? currentUser.player_name : null);
+      if (!targetPlayer) return alert("Select a player first.");
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('player_name', targetPlayer);
+      formData.append('photo', file);
+
+      showExportToast("Uploading Photo", `Saving picture for ${targetPlayer}...`, true);
+
+      try {
+        const res = await fetch('/api/players/photo', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Upload failed");
+        }
+
+        const data = await res.json();
+        playerPhotos[targetPlayer] = data.url;
+        updatePlayerAvatarUI(targetPlayer);
+        onProfileRosterChanged();
+        renderRostersUI();
+        showExportToast("Photo Uploaded", `Picture for ${targetPlayer} updated successfully.`, false);
+        setTimeout(hideExportToast, 2500);
+      } catch (err) {
+        showExportToast("Upload Failed", err.message, false);
+        setTimeout(hideExportToast, 3500);
+      }
+    }
+
+    window.removeCurrentPlayerPhoto = async () => {
+      const targetPlayer = selectedProfilePlayer || (currentUser && currentUser.role === 'player' ? currentUser.player_name : null);
+      if (!targetPlayer) return;
+      if (!confirm(`Remove picture for ${targetPlayer}?`)) return;
+
+      try {
+        const res = await fetch(`/api/players/photo?player_name=${encodeURIComponent(targetPlayer)}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          delete playerPhotos[targetPlayer];
+          updatePlayerAvatarUI(targetPlayer);
+          onProfileRosterChanged();
+          renderRostersUI();
+          showExportToast("Photo Removed", `Picture for ${targetPlayer} removed.`, false);
+          setTimeout(hideExportToast, 2500);
+        }
+      } catch (err) {
+        alert("Failed to remove photo");
+      }
+    };
+
+    document.getElementById('profilePhotoFileInput')?.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handlePlayerPhotoUpload(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+    document.getElementById('profilePhotoDirectFileInput')?.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handlePlayerPhotoUpload(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
+    function onProfileRosterChanged() {
+      const rosterName = document.getElementById('profileRosterSelect')?.value || "ALL";
+      const playerSelect = document.getElementById('profilePlayerSelect');
+      const chipsContainer = document.getElementById('profilePlayerChipsContainer');
+      const countBadge = document.getElementById('playerSelectCountBadge');
+      let playerList = [];
+
+      if (!rosterName || rosterName === "ALL") {
+        const set = new Set();
+        rosters.forEach(r => (r.players || []).forEach(p => {
+          if (p && !p.toLowerCase().includes('unassigned')) set.add(p);
+        }));
+        playerList = Array.from(set);
+      } else {
+        const r = rosters.find(x => x.name.toLowerCase() === rosterName.toLowerCase());
+        playerList = (r ? r.players : []).filter(p => p && !p.toLowerCase().includes('unassigned'));
+      }
+
+      if (countBadge) countBadge.innerText = `${playerList.length} ${playerList.length === 1 ? 'player' : 'players'}`;
+
+      if (playerSelect) {
+        playerSelect.innerHTML = `<option value="">-- Choose a Player --</option>` +
+          playerList.map(p => `<option value="${p}">${p}</option>`).join('');
+      }
+
+      if (chipsContainer) {
+        if (playerList.length === 0) {
+          chipsContainer.innerHTML = `<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic py-2">No players found in this roster.</span>`;
+        } else {
+          chipsContainer.innerHTML = playerList.map(p => {
+            const isSelected = selectedProfilePlayer === p;
+            const photoUrl = playerPhotos[p];
+            return `
+              <button type="button" onclick="selectPlayerForProfile('${p.replace(/'/g, "\\'")}')" class="player-nav-chip md-chip ${isSelected ? 'selected bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary border-transparent shadow-sm' : 'bg-md-surface-container-high dark:bg-md-dark-surface-container-high text-md-on-surface dark:text-md-dark-on-surface border-md-outline-variant dark:border-md-dark-outline-variant hover:border-md-primary dark:hover:border-md-dark-primary'} transition-all">
+                ${photoUrl
+                  ? `<img src="${photoUrl}" class="w-4 h-4 rounded-full object-cover shrink-0" alt="">`
+                  : `<span class="material-symbols-outlined" style="font-size: 16px;">${isSelected ? 'check_circle' : 'person'}</span>`
+                }
+                <span>${p}</span>
+              </button>
+            `;
+          }).join('');
+        }
+      }
+
+      if (selectedProfilePlayer && playerList.includes(selectedProfilePlayer)) {
+        if (playerSelect) playerSelect.value = selectedProfilePlayer;
+        updatePlayerAvatarUI(selectedProfilePlayer);
+        fetchPlayerClips(selectedProfilePlayer);
+      } else {
+        selectedProfilePlayer = null;
+        updatePlayerAvatarUI(null);
+        if (playerSelect) playerSelect.value = "";
+        fetchPlayerClips(null);
+      }
+    }
+
+    window.selectPlayerForProfile = (playerName) => {
+      selectedProfilePlayer = playerName;
+      const playerSelect = document.getElementById('profilePlayerSelect');
+      if (playerSelect) playerSelect.value = playerName || "";
+
+      const chips = document.querySelectorAll('.player-nav-chip');
+      chips.forEach(chip => {
+        const text = chip.querySelector('span:last-child')?.innerText?.trim();
+        const icon = chip.querySelector('.material-symbols-outlined');
+        if (text === playerName) {
+          chip.className = "player-nav-chip md-chip selected bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary border-transparent shadow-sm transition-all";
+          if (icon) icon.innerText = 'check_circle';
+        } else {
+          chip.className = "player-nav-chip md-chip bg-md-surface-container-high dark:bg-md-dark-surface-container-high text-md-on-surface dark:text-md-dark-on-surface border-md-outline-variant dark:border-md-dark-outline-variant hover:border-md-primary dark:hover:border-md-dark-primary transition-all";
+          if (icon) icon.innerText = 'person';
+        }
+      });
+
+      updatePlayerAvatarUI(playerName);
+      fetchPlayerClips(playerName);
+    };
+
+    window.onPlayerSelectDropdownChanged = () => {
+      const selectedVal = document.getElementById('profilePlayerSelect').value;
+      selectPlayerForProfile(selectedVal);
+    };
+
+    window.selectPlayerAndNavigate = (playerName, rosterName) => {
+      switchView('player');
+      const rosterSelect = document.getElementById('profileRosterSelect');
+      if (rosterSelect && rosterName) {
+        rosterSelect.value = rosterName;
+        onProfileRosterChanged();
+      }
+      selectPlayerForProfile(playerName);
+    };
+
+    async function fetchPlayerClips(overridePlayerName = null) {
+      const playerName = overridePlayerName !== null ? overridePlayerName : (selectedProfilePlayer || document.getElementById('profilePlayerSelect')?.value);
+      const rosterName = document.getElementById('profileRosterSelect')?.value || "ALL";
+
+      if (!playerName) {
+        document.getElementById('profilePlayerNameHeading').innerText = "Player Film Vault";
+        document.getElementById('profilePlayerSubheading').innerText = "Select a player from the UI above to populate their game clips and breakdown.";
+        document.getElementById('statTotalClips').innerText = "0";
+        document.getElementById('statTotalFilmTime').innerText = "0s";
+        document.getElementById('playerClipCounter').innerText = "0 Clips";
+        document.getElementById('statTagPills').innerHTML = `<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">Select a player to view tag breakdown</span>`;
+        document.getElementById('playerClipsGrid').innerHTML = `
+          <div class="col-span-full py-16 text-center text-md-on-surface-variant dark:text-md-dark-on-surface-variant text-base font-medium flex flex-col items-center gap-3">
+            <span class="material-symbols-outlined" style="font-size: 56px; opacity: 0.4;">person_search</span>
+            <p class="text-lg font-medium text-md-on-surface dark:text-md-dark-on-surface">No Player Selected</p>
+            <p class="text-sm max-w-md">Choose a player from the selection UI above to analyze their personal game tape, duration, and tagged possessions.</p>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById('profilePlayerNameHeading').innerText = `${playerName}'s Film Vault`;
+      document.getElementById('profilePlayerSubheading').innerText = `Breakdown of tagged possessions and tape.`;
+
+      const res = await fetch(`/api/players/clips?player_name=${encodeURIComponent(playerName)}&roster_name=${encodeURIComponent(rosterName)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) return;
+      const clips = await res.json();
+      clips.sort((a, b) => getClipTimestamp(a) - getClipTimestamp(b));
+      renderPlayerProfileData(clips);
+    }
+
+    function renderPlayerProfileData(clips) {
+      document.getElementById('statTotalClips').innerText = clips.length;
+      document.getElementById('playerClipCounter').innerText = `${clips.length} Clips Found`;
+
+      const totalSec = clips.reduce((acc, c) => acc + (parseFloat(c.duration) || 0), 0);
+      document.getElementById('statTotalFilmTime').innerText = `${Math.round(totalSec)}s`;
+
+      const tagCounts = {};
+      clips.forEach(c => {
+        (c.categories || [c.category]).forEach(t => {
+          tagCounts[t] = (tagCounts[t] || 0) + 1;
+        });
+      });
+
+      const pillsContainer = document.getElementById('statTagPills');
+      if (Object.keys(tagCounts).length === 0) {
+        pillsContainer.innerHTML = `<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">No tagged events yet</span>`;
+      } else {
+        pillsContainer.innerHTML = Object.entries(tagCounts).map(([tag, count]) => `
+          <span class="md-chip selected bg-md-primary-container dark:bg-md-dark-primary-container text-md-on-primary-container dark:text-md-dark-on-primary-container border-transparent !py-0.5 !px-2.5 !text-xs">
+            ${tag}: ${count}
+          </span>
+        `).join('');
+      }
+
+      const grid = document.getElementById('playerClipsGrid');
+      if (clips.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-md-on-surface-variant dark:text-md-dark-on-surface-variant text-sm font-medium flex flex-col items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.4;">video_library</span>
+          No clips recorded for this player yet.
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = clips.map(c => {
+        const clipStartTime = (c.start_time !== undefined && c.start_time !== null) ? c.start_time : c.startTime;
+        return `
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg overflow-hidden shadow-sm flex flex-col justify-between md-elevation">
+          <div class="p-4 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-mono font-medium text-md-tertiary dark:text-md-dark-tertiary">${c.project_name || "Game Film"}</span>
+              <span class="text-xs font-mono font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant">
+                ${clipStartTime !== undefined && clipStartTime !== null ? `<span class="text-md-primary dark:text-md-dark-primary font-semibold">${formatTime(clipStartTime)}</span> • ` : ''}${c.duration}s
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-1 mt-1">
+              ${(c.categories || [c.category]).map(cat => `
+                <span class="md-chip selected bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary border-transparent !py-0.5 !px-2 !text-xs">${cat}</span>
+              `).join('')}
+            </div>
+            ${c.annotation ? `
+              <div class="text-xs font-medium text-md-tertiary dark:text-md-dark-tertiary bg-md-tertiary-container/30 dark:bg-md-dark-tertiary-container/30 px-2 py-1 rounded-md-xs border border-md-tertiary/20 dark:border-md-dark-tertiary/20 flex items-center gap-1.5 mt-0.5">
+                <span class="material-symbols-outlined" style="font-size: 14px;">comment</span>
+                <span class="truncate">${c.annotation}</span>
+              </div>
+            ` : ''}
+          </div>
+          <div class="p-3 bg-md-surface-container dark:bg-md-dark-surface-container border-t border-md-outline-variant dark:border-md-dark-outline-variant flex items-center justify-between gap-2">
+            <button type="button" onclick="playClip('${c.url}')" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-1.5 !px-3 !text-xs cursor-pointer">
+              <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span>
+              Watch Play
+            </button>
+            <div class="flex items-center gap-1.5">
+              <button onclick="promptAddClipToReel('${c.id}')" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-1.5 !px-2.5 !text-xs !rounded-full" title="Add to Reel">
+                <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+              </button>
+              <a href="${c.url}" download="${c.filename}" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-1.5 !px-2.5 !text-xs !rounded-full">
+                <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    // Keyboard Shortcuts & Multi-Tag Hotkeys
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      
+      if (!document.getElementById('theaterModal').classList.contains('hidden')) {
+        if (e.code === 'Space') { e.preventDefault(); toggleTheaterPlay(); }
+        else if (e.code === 'ArrowRight') theaterNextClip();
+        else if (e.code === 'ArrowLeft') theaterPrevClip();
+        else if (e.key.toLowerCase() === 'm') toggleTheaterMute();
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setTheaterVolume(theaterVideo.volume + 0.05); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); setTheaterVolume(theaterVideo.volume - 0.05); }
+        else if (e.code === 'Escape') exitTheaterMode();
+        return;
+      }
+
+      if (workspaceView.style.display === 'none') return;
+
+      if (['1','2','3','4','5','6','7','8','9'].includes(e.key)) {
+        const targetCategory = hotkeyMap[e.key];
+        if (targetCategory) {
+          if (activePendingId && pendingMarks.length > 0) {
+            toggleTagOnMark(activePendingId, targetCategory);
+          } else {
+            addPendingMark(targetCategory);
+          }
+          return;
+        }
+      }
+
+      if (e.code === 'Space') { 
+        e.preventDefault(); 
+        video.paused ? video.play() : video.pause(); 
+      } else if (e.key.toLowerCase() === 'k') {
+        addPendingMark();
+      } else if (e.key.toLowerCase() === 'm') {
+        toggleMute();
+      } else if (e.key.toLowerCase() === 'j') {
+        video.currentTime = Math.max(0, video.currentTime - 5);
+      } else if (e.key.toLowerCase() === 'l') {
+        video.currentTime = Math.min(video.duration, video.currentTime + 5);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setVolume(video.volume + 0.05);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setVolume(video.volume - 0.05);
+      } else if (e.code === 'ArrowLeft') { 
+        video.currentTime -= 1 / 30; 
+      } else if (e.code === 'ArrowRight') { 
+        video.currentTime += 1 / 30; 
+      }
+    });
+
+    // Touch Telestration Canvas
+    const telestrationBtn = document.getElementById('telestrationToggle');
+    telestrationBtn.onclick = () => {
+      isDrawingMode = !isDrawingMode;
+      canvas.classList.toggle('drawing-mode', isDrawingMode);
+      telestrationBtn.classList.toggle('bg-md-tertiary', isDrawingMode);
+      telestrationBtn.classList.toggle('dark:bg-md-dark-tertiary', isDrawingMode);
+      telestrationBtn.classList.toggle('bg-md-surface-container-high', !isDrawingMode);
+      telestrationBtn.classList.toggle('dark:bg-md-dark-surface-container-high', !isDrawingMode);
+      if (isDrawingMode) video.pause();
+    };
+    document.getElementById('clearDrawingBtn').onclick = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      if (!isDrawingMode) return;
+      drawing = true;
+      const coords = getCanvasCoords(e);
+      ctx.beginPath();
+      ctx.strokeStyle = '#FFD8E4';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.moveTo(coords.x, coords.y);
+    }
+
+    function moveDraw(e) {
+      if (!drawing || !isDrawingMode) return;
+      const coords = getCanvasCoords(e);
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+    }
+
+    function endDraw() { drawing = false; }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', moveDraw);
+    window.addEventListener('mouseup', endDraw);
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', moveDraw, { passive: false });
+    window.addEventListener('touchend', endDraw);
+
+    checkAuth();
+  </script>
+</body>
+</html>
