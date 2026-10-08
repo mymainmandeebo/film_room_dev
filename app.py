@@ -7,7 +7,6 @@ import zipfile
 import io
 import time
 import shutil
-import threading
 from pathlib import Path
 from typing import List, Optional, Union
 import bcrypt
@@ -25,14 +24,6 @@ ALGORITHM = "HS256"
 APP_ENV = os.getenv("APP_ENV", "PROD").upper()
 APP_ENV_LABEL = "Dev" if APP_ENV == "DEV" else "Prod"
 
-# --- AI / Auto-tagging config (kept lightweight for GTX 1060 6GB) ---
-# faster-whisper runs on CPU int8 by default so the GPU stays free for ffmpeg.
-# Admins with VRAM headroom can set WHISPER_DEVICE=cuda.
-WHISPER_ENABLED = os.getenv("WHISPER_ENABLED", "true").lower() == "true"
-WHISPER_MODEL   = os.getenv("WHISPER_MODEL", "base")
-WHISPER_DEVICE  = os.getenv("WHISPER_DEVICE", "cpu")
-WHISPER_COMPUTE = os.getenv("WHISPER_COMPUTE", "int8")
-
 app = FastAPI(title=f"Sports Film Room Analyzer ({APP_ENV_LABEL})")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -42,9 +33,8 @@ CLIPS_DIR = DATA_DIR / "clips"
 REELS_DIR = DATA_DIR / "reels"
 PLAYERS_DIR = DATA_DIR / "players"
 DB_FILE = DATA_DIR / "store.json"
-MODELS_DIR = DATA_DIR / "models"
 
-for folder in [UPLOAD_DIR, CLIPS_DIR, REELS_DIR, PLAYERS_DIR, MODELS_DIR]:
+for folder in [UPLOAD_DIR, CLIPS_DIR, REELS_DIR, PLAYERS_DIR]:
     folder.mkdir(parents=True, exist_ok=True)
 
 security = HTTPBearer()
@@ -53,42 +43,6 @@ app.mount("/media/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="upload
 app.mount("/media/clips", StaticFiles(directory=str(CLIPS_DIR)), name="clips")
 app.mount("/media/reels", StaticFiles(directory=str(REELS_DIR)), name="reels")
 app.mount("/media/players", StaticFiles(directory=str(PLAYERS_DIR)), name="players")
-
-# --- Lazy Whisper singleton ------------------------------------------------
-# Only loaded on first /api/transcribe call, so cold-start of the app and the
-# common case (no voice notes) never pay the model-load cost.
-_whisper_model = None
-_whisper_lock = threading.Lock()
-
-def get_whisper_model():
-    """Returns a loaded WhisperModel, or None if STT is disabled/unavailable."""
-    global _whisper_model
-    if not WHISPER_ENABLED:
-        return None
-    if _whisper_model is not None:
-        return _whisper_model if _whisper_model is not False else None
-    with _whisper_lock:
-        if _whisper_model is None:
-            try:
-                from faster_whisper import WhisperModel
-                print(f"[STT] Loading whisper model='{WHISPER_MODEL}' device='{WHISPER_DEVICE}' compute='{WHISPER_COMPUTE}'")
-                _whisper_model = WhisperModel(
-                    WHISPER_MODEL,
-                    device=WHISPER_DEVICE,
-                    compute_type=WHISPER_COMPUTE,
-                    download_root=str(MODELS_DIR),
-                )
-                print("[STT] Whisper model ready.")
-            except Exception as e:
-                print(f"[STT] Whisper unavailable, mic features disabled: {e}")
-                _whisper_model = False
-    return _whisper_model if _whisper_model else None
-
-def is_stt_available() -> bool:
-    if not WHISPER_ENABLED:
-        return False
-    # If we've already failed to load, report unavailable; otherwise optimistic.
-    return _whisper_model is not False
 
 def sanitize_for_filename(name: Optional[str], default: str = "Unassigned") -> str:
     if not name or not name.strip():
@@ -212,9 +166,7 @@ def get_app_config():
     return {
         "env": APP_ENV,
         "env_label": APP_ENV_LABEL,
-        "app_title": f"Sports Film Room ({APP_ENV_LABEL})",
-        "stt_available": is_stt_available(),
-        "stt_model": WHISPER_MODEL if WHISPER_ENABLED else None,
+        "app_title": f"Sports Film Room ({APP_ENV_LABEL})"
     }
 
 # --- Auth Endpoints ---
@@ -1159,152 +1111,6 @@ async def restore_all_data(
         "clips": len(restored_db.get("clips", [])),
         "reels": len(restored_db.get("reels", [])),
         "rosters": len(restored_db.get("rosters", [])),
-    }
-
-# ============================================================================
-# --- Auto-Tagging: Whistle / Dead-Ball Audio Detection ----------------------
-# ============================================================================
-# Pure-ffmpeg scan, no ML. Strategy:
-#   1. High-pass filter at ~2kHz to isolate whistle band.
-#   2. silencedetect finds transitions from quiet -> loud (silence_end events),
-#      which fire reliably on whistles, horns, and crowd eruptions after a
-#      dead ball.
-#   3. De-dupe events within 1.5s, cap the total to avoid a wall of suggestions.
-# Runs comfortably faster-than-realtime on a 1060 host; no GPU used.
-class DetectEventsPayload(BaseModel):
-    noise_db:     Optional[float] = -30.0   # silence threshold in dBFS
-    min_silence:  Optional[float] = 0.35    # seconds of quiet required before an event
-    highpass_hz:  Optional[int]   = 2000    # whistle-band emphasis
-    lookback:     Optional[float] = 6.0     # seconds of pre-roll on each suggestion
-    leadout:      Optional[float] = 4.0     # seconds of post-roll on each suggestion
-    max_events:   Optional[int]   = 40      # hard cap on returned suggestions
-    dedupe_gap:   Optional[float] = 1.5     # merge events closer than this
-
-@app.post("/api/projects/{project_id}/detect-events")
-def detect_project_events(
-    project_id: str,
-    payload: DetectEventsPayload,
-    user: dict = Depends(get_current_user)
-):
-    check_project_access(user, project_id)
-    if user["role"] in ["viewer", "player"]:
-        raise HTTPException(status_code=403, detail="Permission denied")
-
-    db = read_db()
-    project = next((p for p in db["projects"] if p["id"] == project_id), None)
-    if not project or not project.get("video_filename"):
-        raise HTTPException(status_code=400, detail="No game tape uploaded for this project")
-
-    video_path = UPLOAD_DIR / project["video_filename"]
-    if not video_path.exists():
-        raise HTTPException(status_code=404, detail="Game tape file is missing on disk")
-
-    # --- Run the audio scan -------------------------------------------------
-    audio_filter = (
-        f"highpass=f={int(payload.highpass_hz)},"
-        f"silencedetect=noise={payload.noise_db}dB:d={payload.min_silence}"
-    )
-    cmd = [
-        "ffmpeg", "-hide_banner", "-nostats",
-        "-i", str(video_path),
-        "-af", audio_filter,
-        "-f", "null", "-"
-    ]
-    try:
-        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Audio scan exceeded 10 minutes")
-
-    stderr_text = res.stderr.decode("utf-8", errors="ignore")
-    raw_events = [float(m.group(1)) for m in re.finditer(r"silence_end:\s*([0-9.]+)", stderr_text)]
-
-    # --- De-dupe close events ----------------------------------------------
-    deduped: List[float] = []
-    for t in raw_events:
-        if not deduped or (t - deduped[-1]) > float(payload.dedupe_gap):
-            deduped.append(t)
-    deduped = deduped[: int(payload.max_events)]
-
-    # --- Probe duration so we can clamp the tail suggestion -----------------
-    duration = 0.0
-    try:
-        probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15
-        )
-        duration = float((probe.stdout.decode().strip() or "0") or 0)
-    except Exception:
-        duration = 0.0
-
-    suggestions = []
-    for t in deduped:
-        s = max(0.0, t - float(payload.lookback))
-        e = t + float(payload.leadout)
-        if duration > 0:
-            e = min(duration, e)
-        suggestions.append({
-            "event_time": round(t, 2),
-            "start_time": round(s, 2),
-            "end_time":   round(e, 2),
-            "source":     "auto-whistle",
-        })
-
-    return {
-        "count": len(suggestions),
-        "events": suggestions,
-        "scan": {
-            "noise_db": payload.noise_db,
-            "min_silence": payload.min_silence,
-            "highpass_hz": payload.highpass_hz,
-            "tape_duration": round(duration, 2),
-        }
-    }
-
-# ============================================================================
-# --- Speech-to-Text Voice Notes --------------------------------------------
-# ============================================================================
-# Browser sends a short MediaRecorder webm/opus blob; faster-whisper decodes
-# it directly via its bundled ffmpeg call. Notes are limited to 25MB (~10 min
-# of opus) but the UI auto-stops at 15s.
-@app.post("/api/transcribe")
-async def transcribe_audio_note(
-    audio: UploadFile = File(...),
-    user: dict = Depends(get_current_user)
-):
-    if user["role"] in ["viewer", "player"]:
-        raise HTTPException(status_code=403, detail="Permission denied to record voice notes")
-
-    model = get_whisper_model()
-    if model is None:
-        raise HTTPException(status_code=503, detail="Speech-to-text is disabled on this server")
-
-    raw = await audio.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="Empty audio payload")
-    if len(raw) > 25 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Voice note too long (max 25MB)")
-
-    tmp_path = CLIPS_DIR / f"voice_{uuid.uuid4().hex[:10]}.webm"
-    try:
-        tmp_path.write_bytes(raw)
-        segments, info = model.transcribe(
-            str(tmp_path),
-            beam_size=1,
-            vad_filter=True,
-            vad_parameters={"min_silence_duration_ms": 300},
-        )
-        transcript = " ".join(seg.text.strip() for seg in segments).strip()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
-    finally:
-        try: tmp_path.unlink()
-        except Exception: pass
-
-    return {
-        "transcript": transcript,
-        "language": getattr(info, "language", None),
-        "duration": round(getattr(info, "duration", 0.0) or 0.0, 2),
     }
 
 # --- Highlight Reel Concatenation Export ---
