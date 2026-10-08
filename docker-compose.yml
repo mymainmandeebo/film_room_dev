@@ -11,7 +11,6 @@ services:
     devices:
       - /dev/dri:/dev/dri
     environment:
-      - APP_ENV=DEV
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
     restart: unless-stopped

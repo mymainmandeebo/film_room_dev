@@ -40,8 +40,6 @@ app.mount("/media/clips", StaticFiles(directory=str(CLIPS_DIR)), name="clips")
 app.mount("/media/reels", StaticFiles(directory=str(REELS_DIR)), name="reels")
 app.mount("/media/players", StaticFiles(directory=str(PLAYERS_DIR)), name="players")
 
-
-
 def sanitize_for_filename(name: Optional[str], default: str = "Unassigned") -> str:
     if not name or not name.strip():
         return default
@@ -197,12 +195,6 @@ class UserUpdatePayload(BaseModel):
     project_ids: Optional[List[str]] = None
     player_name: Optional[str] = None
 
-@app.get("/api/config")
-def get_app_config():
-    return {
-        "env": APP_ENV
-    }
-    
 @app.get("/api/admin/users")
 def list_users(user: dict = Depends(get_current_user)):
     if user["role"] != "admin":
