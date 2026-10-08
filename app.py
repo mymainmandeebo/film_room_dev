@@ -6,6 +6,7 @@ import json
 import zipfile
 import io
 import time
+import shutil
 from pathlib import Path
 from typing import List, Optional, Union
 import bcrypt
@@ -29,8 +30,9 @@ CLIPS_DIR = DATA_DIR / "clips"
 REELS_DIR = DATA_DIR / "reels"
 PLAYERS_DIR = DATA_DIR / "players"
 DB_FILE = DATA_DIR / "store.json"
+BACKUP_DIR = DATA_DIR / "backups"
 
-for folder in [UPLOAD_DIR, CLIPS_DIR, REELS_DIR, PLAYERS_DIR]:
+for folder in [UPLOAD_DIR, CLIPS_DIR, REELS_DIR, PLAYERS_DIR, BACKUP_DIR]:
     folder.mkdir(parents=True, exist_ok=True)
 
 security = HTTPBearer()
