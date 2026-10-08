@@ -128,6 +128,13 @@ def write_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
+def safe_join_clips(filename: str) -> Path:
+    """Resolve a clip filename safely inside CLIPS_DIR (prevents path traversal)."""
+    candidate = (CLIPS_DIR / filename).resolve()
+    if CLIPS_DIR.resolve() not in candidate.parents and candidate != CLIPS_DIR.resolve():
+        raise HTTPException(status_code=400, detail="Invalid clip path in backup")
+    return candidate
+
 def create_token(user: dict) -> str:
     payload = {
         "sub": user["id"],
@@ -939,20 +946,53 @@ def download_backup(user: dict = Depends(get_current_user)):
         "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "exported_by": user["username"],
         "app": "Sports Film Room Analyzer",
-        "version": 1,
+        "version": 2,
         "store": db
     }
 
-    payload_bytes = json.dumps(export_payload, indent=2).encode("utf-8")
+    # Build ZIP in memory: store.json + clips/*.mp4
+    zip_buffer = io.BytesIO()
+    included_clips = 0
+    missing_clips = 0
+    total_clip_bytes = 0
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
+        # Write the JSON store first
+        zf.writestr("store.json", json.dumps(export_payload, indent=2))
+
+        # Add all clip files referenced by the DB
+        seen = set()
+        for clip in db.get("clips", []):
+            fname = clip.get("filename")
+            if not fname or fname in seen:
+                continue
+            seen.add(fname)
+            clip_path = CLIPS_DIR / fname
+            if clip_path.exists() and clip_path.is_file():
+                try:
+                    zf.write(clip_path, arcname=f"clips/{fname}")
+                    included_clips += 1
+                    total_clip_bytes += clip_path.stat().st_size
+                except Exception:
+                    missing_clips += 1
+            else:
+                missing_clips += 1
+
+    zip_buffer.seek(0)
+
     timestamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
-    filename = f"film_room_backup_{timestamp}.json"
+    filename = f"film_room_backup_{timestamp}.zip"
+
+    # Log a summary server-side
+    print(f"[backup] user={user['username']} clips={included_clips} missing={missing_clips} bytes={total_clip_bytes}")
 
     return StreamingResponse(
-        io.BytesIO(payload_bytes),
-        media_type="application/json",
+        zip_buffer,
+        media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Length": str(len(payload_bytes))
+            "X-Clip-Count": str(included_clips),
+            "X-Missing-Clip-Count": str(missing_clips)
         }
     )
 
@@ -969,10 +1009,59 @@ async def restore_backup(
     if not raw:
         raise HTTPException(status_code=400, detail="Uploaded backup file is empty")
 
-    try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid backup file: not valid JSON")
+    filename_lower = (backup.filename or "").lower()
+    clips_extracted = 0
+    clip_bytes_written = 0
+    clip_errors = []
+
+    # --- Step 1: Extract the JSON store (and clips, if ZIP) ---
+    if filename_lower.endswith(".zip") or raw[:2] == b"PK":
+        # Treat as ZIP
+        try:
+            zf = zipfile.ZipFile(io.BytesIO(raw))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid backup: not a valid ZIP archive")
+
+        with zf:
+            # Find store.json (allow it at root or nested one level)
+            store_member = None
+            for name in zf.namelist():
+                if name.endswith("store.json") and name.count("/") <= 1:
+                    store_member = name
+                    break
+            if not store_member:
+                raise HTTPException(status_code=400, detail="Backup ZIP missing store.json")
+
+            try:
+                parsed = json.loads(zf.read(store_member).decode("utf-8"))
+            except Exception:
+                raise HTTPException(status_code=400, detail="Backup ZIP contains invalid store.json")
+
+            # Extract clips (before we mutate anything)
+            for name in zf.namelist():
+                if not name.startswith("clips/"):
+                    continue
+                if name.endswith("/"):
+                    continue
+                clip_filename = name[len("clips/"):]
+                if not clip_filename or "/" in clip_filename or "\\" in clip_filename:
+                    # Flatten only — refuse nested paths
+                    clip_errors.append(f"skipped unsafe path: {name}")
+                    continue
+                try:
+                    target = safe_join_clips(clip_filename)
+                    with zf.open(name) as src, open(target, "wb") as dst:
+                        shutil.copyfileobj(src, dst, length=1024 * 1024)
+                    clips_extracted += 1
+                    clip_bytes_written += target.stat().st_size
+                except Exception as e:
+                    clip_errors.append(f"{clip_filename}: {e}")
+    else:
+        # Legacy JSON-only backup
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid backup file: not valid JSON or ZIP")
 
     # Support both the wrapped export format and a raw store dump
     if isinstance(parsed, dict) and "store" in parsed and isinstance(parsed["store"], dict):
@@ -1007,6 +1096,25 @@ async def restore_backup(
     restored.setdefault("rosters", [])
     restored.setdefault("player_photos", {})
 
+    # Preserve the current admin's password hash so they don't lock themselves out
+    # if the backup came from a different instance. We match by username.
+    try:
+        current_db = read_db()
+        current_admin = next(
+            (u for u in current_db.get("users", []) if u.get("id") == user["sub"]),
+            None
+        )
+        if current_admin and current_admin.get("password_hash"):
+            target = next(
+                (u for u in restored.get("users", [])
+                 if u.get("username", "").lower() == current_admin.get("username", "").lower()),
+                None
+            )
+            if target is not None:
+                target["password_hash"] = current_admin["password_hash"]
+    except Exception:
+        pass
+
     write_db(restored)
 
     return {
@@ -1018,6 +1126,9 @@ async def restore_backup(
             "reels": len(restored.get("reels", [])),
             "rosters": len(restored.get("rosters", []))
         },
+        "clips_extracted": clips_extracted,
+        "clip_bytes_written": clip_bytes_written,
+        "clip_errors": clip_errors[:20],  # cap response size
         "restored_by": user["username"]
     }
 
