@@ -991,13 +991,18 @@ def backup_all_data(user: dict = Depends(get_current_user)):
         zf.writestr("manifest.json", json.dumps(manifest, indent=2))
 
     backup_buffer.seek(0)
+    total_bytes = backup_buffer.getbuffer().nbytes
     stamp = time.strftime("%Y%m%d_%H%M%S")
     zip_filename = f"film_room_backup_{APP_ENV_LABEL.lower()}_{stamp}.zip"
 
     return StreamingResponse(
         backup_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'}
+        headers={
+            "Content-Disposition": f'attachment; filename="{zip_filename}"',
+            "Content-Length": str(total_bytes),
+            "X-Backup-Total-Bytes": str(total_bytes),
+        }
     )
 
 @app.post("/api/admin/restore")

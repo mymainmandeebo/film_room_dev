@@ -2891,23 +2891,42 @@
 
         showBackupStatus("Downloading ZIP archive...", null, true, false);
 
-        // Stream the body so we can show download progress
-        const contentLength = res.headers.get('Content-Length');
-        const total = contentLength ? parseInt(contentLength, 10) : 0;
+        // Stream the body so we can show download progress.
+        // Prefer the explicit X-Backup-Total-Bytes header (set by the server),
+        // falling back to Content-Length.
+        const headerTotal = res.headers.get('X-Backup-Total-Bytes') || res.headers.get('Content-Length');
+        const total = headerTotal ? parseInt(headerTotal, 10) : 0;
+
+        if (!res.body) {
+          throw new Error("Streaming not supported by this browser.");
+        }
+
         const reader = res.body.getReader();
         const chunks = [];
         let received = 0;
+        const startTime = Date.now();
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           chunks.push(value);
           received += value.length;
+
+          const mbReceived = received / (1024 * 1024);
+          const elapsedSec = Math.max(0.001, (Date.now() - startTime) / 1000);
+          const speedMBs = mbReceived / elapsedSec;
+
           if (total > 0) {
-            const pct = Math.round((received / total) * 100);
-            showBackupStatus(`Downloading backup... (${(received / (1024 * 1024)).toFixed(1)} MB)`, pct, true, true);
+            const pct = Math.min(100, Math.round((received / total) * 100));
+            showBackupStatus(
+              `Downloading backup... ${mbReceived.toFixed(1)} MB / ${(total / (1024 * 1024)).toFixed(1)} MB • ${speedMBs.toFixed(1)} MB/s`,
+              pct, true, true
+            );
           } else {
-            showBackupStatus(`Downloading backup... (${(received / (1024 * 1024)).toFixed(1)} MB)`, null, true, false);
+            showBackupStatus(
+              `Downloading backup... ${mbReceived.toFixed(1)} MB • ${speedMBs.toFixed(1)} MB/s`,
+              null, true, false
+            );
           }
         }
 
@@ -2915,6 +2934,10 @@
         const disposition = res.headers.get('Content-Disposition') || '';
         const match = disposition.match(/filename="?([^"]+)"?/);
         const filename = match ? match[1] : `film_room_backup_${Date.now()}.zip`;
+
+        if (total > 0 && received < total) {
+          console.warn(`Backup download may be truncated: received ${received} of ${total} bytes.`);
+        }
 
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
