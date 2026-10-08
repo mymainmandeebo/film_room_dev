@@ -298,16 +298,74 @@
     /* --- Compact Density Mode ---
        Tailwind's default spacing/typography/radius scale is rem-based, so scaling
        the root font-size proportionally shrinks padding, gaps, border-radius and
-       text sizes across the whole app without needing per-element overrides. */
-    html.compact { font-size: 87.5%; }
+       text sizes across the whole app without needing per-element overrides.
+       On top of that, directly remap the Tailwind spacing utility classes used
+       throughout the markup/templates so padding and gaps shrink much further
+       than the font-size scale alone would give us. [class~="..."] matches an
+       exact whitespace-separated class token, so it won't false-positive on
+       unrelated classes (e.g. "opacity-80" vs "p-8"). !important is required
+       since the Tailwind CDN injects its utility <style> at runtime, which can
+       land after this block in source order. */
+    html.compact { font-size: 85%; }
+
     html.compact .md-dialog { padding: 18px; }
-    html.compact #videoContainer { max-height: 42vh; }
     html.compact .md-btn-filled,
     html.compact .md-btn-outlined,
     html.compact .md-btn-text,
     html.compact .md-btn-tonal { gap: 6px; }
     html.compact .md-chip { padding: 4px 10px; }
     html.compact kbd { padding: 1px 4px; }
+    html.compact #videoContainer { max-height: 38vh; }
+
+    /* Padding */
+    html.compact [class~="p-1"] { padding: 0.15rem !important; }
+    html.compact [class~="p-1.5"] { padding: 0.2rem !important; }
+    html.compact [class~="p-2"] { padding: 0.3rem !important; }
+    html.compact [class~="p-2.5"] { padding: 0.4rem !important; }
+    html.compact [class~="p-3"] { padding: 0.5rem !important; }
+    html.compact [class~="p-3.5"] { padding: 0.55rem !important; }
+    html.compact [class~="p-4"] { padding: 0.6rem !important; }
+    html.compact [class~="p-5"] { padding: 0.75rem !important; }
+    html.compact [class~="p-6"] { padding: 0.9rem !important; }
+    html.compact [class~="p-8"],
+    html.compact [class~="sm:p-8"] { padding: 1rem !important; }
+
+    /* Horizontal / vertical padding */
+    html.compact [class~="px-2"] { padding-left: 0.3rem !important; padding-right: 0.3rem !important; }
+    html.compact [class~="px-3"] { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    html.compact [class~="px-4"] { padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
+    html.compact [class~="px-5"] { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+    html.compact [class~="px-6"] { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+    html.compact [class~="px-8"],
+    html.compact [class~="sm:px-8"] { padding-left: 1rem !important; padding-right: 1rem !important; }
+    html.compact [class~="py-1"] { padding-top: 0.15rem !important; padding-bottom: 0.15rem !important; }
+    html.compact [class~="py-1.5"] { padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; }
+    html.compact [class~="py-2"] { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
+    html.compact [class~="py-2.5"] { padding-top: 0.35rem !important; padding-bottom: 0.35rem !important; }
+    html.compact [class~="py-3"] { padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
+    html.compact [class~="pt-2"] { padding-top: 0.3rem !important; }
+    html.compact [class~="pt-3"] { padding-top: 0.45rem !important; }
+    html.compact [class~="pb-2"] { padding-bottom: 0.3rem !important; }
+    html.compact [class~="pb-3"] { padding-bottom: 0.45rem !important; }
+
+    /* Gaps */
+    html.compact [class~="gap-1"] { gap: 0.15rem !important; }
+    html.compact [class~="gap-1.5"] { gap: 0.2rem !important; }
+    html.compact [class~="gap-2"] { gap: 0.3rem !important; }
+    html.compact [class~="gap-2.5"] { gap: 0.35rem !important; }
+    html.compact [class~="gap-3"] { gap: 0.45rem !important; }
+    html.compact [class~="gap-3.5"] { gap: 0.5rem !important; }
+    html.compact [class~="gap-4"] { gap: 0.6rem !important; }
+    html.compact [class~="gap-5"] { gap: 0.75rem !important; }
+    html.compact [class~="gap-6"] { gap: 0.9rem !important; }
+
+    /* Margins that create visual breathing room */
+    html.compact [class~="mt-1"] { margin-top: 0.15rem !important; }
+    html.compact [class~="mt-2"] { margin-top: 0.3rem !important; }
+    html.compact [class~="mt-3"] { margin-top: 0.45rem !important; }
+    html.compact [class~="mt-3.5"] { margin-top: 0.5rem !important; }
+    html.compact [class~="mt-4"] { margin-top: 0.6rem !important; }
+    html.compact [class~="mb-2"] { margin-bottom: 0.3rem !important; }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
