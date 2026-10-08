@@ -336,6 +336,77 @@
       opacity: 0.4;
       cursor: not-allowed;
     }
+
+    /* Play Type quick toggle buttons (under video) */
+    .playtype-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 100px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      cursor: pointer;
+      border: 1px solid #CAC4D0;
+      background: transparent;
+      color: #49454F;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+    .dark .playtype-toggle-btn {
+      border-color: #49454F;
+      color: #CAC4D0;
+    }
+    .playtype-toggle-btn:hover {
+      background: rgba(103, 80, 164, 0.08);
+      border-color: #6750A4;
+      color: #6750A4;
+    }
+    .dark .playtype-toggle-btn:hover {
+      background: rgba(208, 188, 255, 0.12);
+      border-color: #D0BCFF;
+      color: #D0BCFF;
+    }
+    .playtype-toggle-btn:active { transform: scale(0.97); }
+    .playtype-toggle-btn .playtype-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(0,0,0,0.08);
+      color: inherit;
+      line-height: 1;
+    }
+    .dark .playtype-toggle-btn .playtype-key {
+      background: rgba(255,255,255,0.12);
+    }
+    .playtype-toggle-btn.active {
+      background: #6750A4;
+      border-color: #6750A4;
+      color: #FFFFFF;
+    }
+    .dark .playtype-toggle-btn.active {
+      background: #D0BCFF;
+      border-color: #D0BCFF;
+      color: #381E72;
+    }
+    .playtype-toggle-btn.active .playtype-key {
+      background: rgba(255,255,255,0.25);
+    }
+    .dark .playtype-toggle-btn.active .playtype-key {
+      background: rgba(0,0,0,0.2);
+    }
+    html.compact .playtype-toggle-btn { padding: 4px 10px; font-size: 11px; gap: 4px; }
     .timeline-scrubber { 
       user-select: none; 
       touch-action: none;
@@ -1196,6 +1267,12 @@
             <span class="material-symbols-outlined">restart_alt</span>
             <span class="hidden md:inline">Reset</span>
           </button>
+        </div>
+
+        <!-- Play Type Quick Toggle Row (under video) — one button per play type. -->
+        <div id="playTypeQuickToggleRow" class="role-editor bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg px-3 py-2 flex items-center gap-1.5 overflow-x-auto shadow-sm">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-md-tertiary dark:text-md-dark-tertiary pr-1.5 shrink-0 hidden sm:inline">Play Tags</span>
+          <div id="playTypeQuickToggles" class="flex items-center gap-1.5 flex-nowrap"></div>
         </div>
 
         <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg px-4 py-2.5 flex flex-col gap-2 shadow-sm">
@@ -2636,6 +2713,72 @@
       }
       localStorage.setItem(`analyzerCategories_${currentSport}`, JSON.stringify(categories));
       localStorage.setItem(`analyzerHotkeyMap_${currentSport}`, JSON.stringify(hotkeyMap));
+
+      renderPlayTypeQuickToggles();
+    }
+
+    // --- Play Type Quick Toggles (under video) ---
+    // One button per play type. Click behaves like its hotkey:
+    //   - if a pending mark is active → toggle that tag on it
+    //   - otherwise → create a new pending mark tagged with this play type
+    // Buttons highlight when their category is active on the current mark.
+    function renderPlayTypeQuickToggles() {
+      const container = document.getElementById('playTypeQuickToggles');
+      if (!container) return;
+
+      if (!categories || categories.length === 0) {
+        container.innerHTML = `<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">No play types configured. Add them in Settings.</span>`;
+        return;
+      }
+
+      // Reverse lookup: category name -> bound hotkey number (if any)
+      const catToKey = {};
+      Object.entries(hotkeyMap || {}).forEach(([num, cat]) => {
+        if (cat) catToKey[cat] = num;
+      });
+
+      container.innerHTML = categories.map(cat => {
+        const keyNum = catToKey[cat];
+        const attrEsc = cat.replace(/"/g, '&quot;');
+        const jsEsc = cat.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const title = `Toggle play type: ${cat}${keyNum ? ` (Hotkey ${keyNum})` : ''}`;
+        return `
+          <button type="button"
+                  class="playtype-toggle-btn"
+                  data-category="${attrEsc}"
+                  onclick="quickTogglePlayType('${jsEsc}')"
+                  title="${title}">
+            ${keyNum ? `<span class="playtype-key">${keyNum}</span>` : ''}
+            <span>${cat}</span>
+          </button>
+        `;
+      }).join('');
+
+      syncPlayTypeQuickToggleState();
+    }
+
+    window.quickTogglePlayType = (cat) => {
+      if (!cat) return;
+      if (currentUser && (currentUser.role === 'viewer' || currentUser.role === 'player')) return;
+
+      if (activePendingId && pendingMarks.some(m => m.id === activePendingId)) {
+        toggleTagOnMark(activePendingId, cat);
+      } else {
+        addPendingMark(cat);
+      }
+      syncPlayTypeQuickToggleState();
+    };
+
+    function syncPlayTypeQuickToggleState() {
+      const container = document.getElementById('playTypeQuickToggles');
+      if (!container) return;
+      const mark = activePendingId ? pendingMarks.find(m => m.id === activePendingId) : null;
+      const activeCats = mark ? new Set(mark.categories || []) : new Set();
+
+      container.querySelectorAll('.playtype-toggle-btn').forEach(btn => {
+        const cat = btn.getAttribute('data-category');
+        btn.classList.toggle('active', activeCats.has(cat));
+      });
     }
 
     document.getElementById('addCategoryBtn').onclick = () => {
@@ -4151,6 +4294,7 @@
       activePendingId = id;
       updateTimelineUI();
       updateTimelineMarkerOverlay(mark);
+      syncPlayTypeQuickToggleState();
 
       document.querySelectorAll('#pendingMarksList > div').forEach(c => {
         c.classList.remove('border-md-tertiary', 'ring-2', 'ring-md-tertiary');
@@ -4264,6 +4408,8 @@
           </div>
         `;
       }).join('');
+
+      syncPlayTypeQuickToggleState();
     }
 
     window.updatePendingField = (id, field, value) => {
