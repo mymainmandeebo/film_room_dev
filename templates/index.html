@@ -295,7 +295,17 @@
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     .drag-over { border: 2px dashed #6750A4 !important; background-color: rgba(103, 80, 164, 0.1) !important; }
 
-    /* --- Compact Density Mode --- */
+    /* --- Compact Density Mode ---
+       Tailwind's default spacing/typography/radius scale is rem-based, so scaling
+       the root font-size proportionally shrinks padding, gaps, border-radius and
+       text sizes across the whole app without needing per-element overrides.
+       On top of that, directly remap the Tailwind spacing utility classes used
+       throughout the markup/templates so padding and gaps shrink much further
+       than the font-size scale alone would give us. [class~="..."] matches an
+       exact whitespace-separated class token, so it won't false-positive on
+       unrelated classes (e.g. "opacity-80" vs "p-8"). !important is required
+       since the Tailwind CDN injects its utility <style> at runtime, which can
+       land after this block in source order. */
     html.compact { font-size: 85%; }
 
     html.compact .md-dialog { padding: 18px; }
@@ -825,100 +835,382 @@
     </div>
   </div>
 
-  <!-- ================= AUTO-DETECT EVENTS MODAL ================= -->
-  <div id="autoDetectModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm">
-    <div class="md-dialog bg-md-surface-container-lowest dark:bg-md-dark-surface-container-low border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-3 w-full max-w-2xl flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-md-outline-variant dark:border-md-dark-outline-variant pb-3">
-        <div>
-          <h3 class="text-lg font-medium text-md-secondary dark:text-md-dark-secondary flex items-center gap-2">
-            <span class="material-symbols-outlined" style="font-size: 22px;">auto_awesome</span>
-            Auto-Detect Events
-          </h3>
-          <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant mt-1">Scans game audio for whistles, horns, and dead-ball moments to suggest tape markers.</p>
+  <!-- ================= TOP NAVBAR ================= -->
+  <header class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border-b border-md-outline-variant dark:border-md-dark-outline-variant px-4 sm:px-8 py-3 flex justify-between items-center sticky top-0 z-40 safe-top shadow-sm">
+    <div class="flex items-center gap-3 sm:gap-6 overflow-hidden">
+      <div class="flex items-center gap-2 cursor-pointer shrink-0 md-state-layer rounded-md-lg p-1" id="navBrandBtn">
+        <div class="w-10 h-10 rounded-full bg-md-primary-container dark:bg-md-dark-primary-container flex items-center justify-center">
+          <span class="material-symbols-outlined filled text-md-on-primary-container dark:text-md-dark-on-primary-container" style="font-size: 24px;">sports</span>
         </div>
-        <button onclick="closeAutoDetectModal()" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-10 h-10 p-0 rounded-full">
-          <span class="material-symbols-outlined">close</span>
+        <div class="hidden sm:block">
+          <h1 id="appTitleHeading" class="text-base font-medium leading-tight text-md-on-surface dark:text-md-dark-on-surface">Sports Film Room</h1>
+          <span id="roleBadge" class="text-xs font-mono uppercase bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container px-2 py-0.5 rounded-full font-medium">User</span>
+        </div>
+      </div>
+
+      <nav class="flex items-center gap-1 bg-md-surface-container dark:bg-md-dark-surface-container p-1 rounded-full border border-md-outline-variant dark:border-md-dark-outline-variant text-sm">
+        <button id="tabProjectsBtn" class="btn-future grad-violet shadow-future-glow-violet text-white !py-1.5 !px-3.5 !text-xs">
+          <span class="material-symbols-outlined" style="font-size: 16px;">dashboard</span>
+          <span class="hidden lg:inline">Dashboard</span>
         </button>
+        <button id="tabPlayerViewBtn" class="btn-future text-future-lightMuted dark:text-future-darkMuted hover:text-future-lightText dark:hover:text-white !py-1.5 !px-3.5 !text-xs">
+          <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
+          <span class="hidden lg:inline">Player Profile</span>
+        </button>
+        <button id="tabWorkspaceBtn" class="hidden btn-future text-future-lightMuted dark:text-future-darkMuted hover:text-future-lightText dark:hover:text-white !py-1.5 !px-3.5 !text-xs">
+          <span class="material-symbols-outlined" style="font-size: 16px;">play_circle</span>
+          <span class="hidden lg:inline">Current Tape</span>
+      </nav>
+    </div>
+
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <button id="themeToggleBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Toggle Light / Dark Mode">
+        <span id="themeToggleIcon" class="material-symbols-outlined" style="font-size: 22px;">dark_mode</span>
+        <span id="themeToggleText" class="hidden sm:inline text-sm">Dark</span>
+      </button>
+
+      <button id="compactToggleBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Toggle Compact / Comfortable Density">
+        <span id="compactToggleIcon" class="material-symbols-outlined" style="font-size: 22px;">density_medium</span>
+        <span id="compactToggleText" class="hidden sm:inline text-sm">Comfortable</span>
+      </button>
+
+      <button id="btnOpenUserModal" class="hidden md-btn-text text-md-tertiary dark:text-md-dark-tertiary !py-2 !px-3 !rounded-full !text-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">group</span>
+        <span class="hidden sm:inline">Users</span>
+      </button>
+      <button id="openSettingsBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-2 !px-3 !rounded-full !text-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">settings</span>
+        <span class="hidden sm:inline">Settings</span>
+      </button>
+      <button id="logoutBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-error dark:hover:text-md-dark-error !py-2 !px-3 !rounded-full !text-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">logout</span>
+        <span class="hidden sm:inline">Exit</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= VIEW 1: HOME DASHBOARD ================= -->
+  <section id="projectsHubView" class="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <div class="flex justify-between items-center pb-2.5 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
+          <div>
+            <h2 class="text-xl font-medium tracking-tight text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size: 24px;">videocam</span>
+              Game Films
+            </h2>
+            <p class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Analyze full game tapes and slice plays.</p>
+          </div>
+          <button id="btnOpenNewProjectModal" class="hidden md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2 !px-4 !text-sm">
+            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+            New Game
+          </button>
+        </div>
+        <div id="projectsGrid" class="flex flex-col gap-3.5"></div>
       </div>
 
-      <!-- Tunable Detection Parameters -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-3 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Audio level in dBFS below which the room is considered quiet.">Noise Floor (dB)</label>
-          <input type="number" id="detectNoiseDb" value="-30" step="1" min="-60" max="-10"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
+      <div class="lg:col-span-4 flex flex-col gap-4">
+        <div class="flex justify-between items-center pb-2.5 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
+          <div>
+            <h2 class="text-xl font-medium tracking-tight text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size: 24px;">video_library</span>
+              Playlist Reels
+            </h2>
+            <p class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Curate multi-game review reels.</p>
+          </div>
+          <button onclick="openReelModal(null)" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-4 !text-sm">
+            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+            New Reel
+          </button>
         </div>
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Minimum seconds of quiet before an event counts.">Min Silence (s)</label>
-          <input type="number" id="detectMinSilence" value="0.35" step="0.05" min="0.1" max="3"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
+        <div id="homeReelsList" class="flex flex-col gap-3.5"></div>
+      </div>
+
+      <div class="lg:col-span-3 flex flex-col gap-4">
+        <div class="flex justify-between items-center pb-2.5 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
+          <div>
+            <h2 class="text-xl font-medium tracking-tight text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size: 24px;">groups</span>
+              Team Rosters
+            </h2>
+            <p class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Manage player lists.</p>
+          </div>
+          <button id="btnCreateRosterModal" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-4 !text-sm">
+            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+            Roster
+          </button>
         </div>
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="High-pass filter frequency to isolate the whistle band.">High-Pass (Hz)</label>
-          <input type="number" id="detectHighpass" value="2000" step="100" min="500" max="6000"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
+        <div id="homeRostersList" class="flex flex-col gap-3"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= VIEW 2: DEDICATED PLAYER PROFILE VIEW ================= -->
+  <section id="playerProfileView" style="display: none;" class="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full">
+    <div class="flex flex-col gap-6">
+      
+      <!-- Profile Header Banner -->
+      <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant p-6 rounded-md-xl shadow-sm flex flex-wrap items-center justify-between gap-5">
+        <div class="flex items-center gap-4">
+          <div class="relative group w-20 h-20 rounded-full bg-md-tertiary-container dark:bg-md-dark-tertiary-container flex items-center justify-center overflow-hidden border-2 border-md-outline-variant dark:border-md-dark-outline-variant shadow-inner shrink-0">
+            <img id="profilePlayerAvatarImg" src="" alt="Player Picture" class="w-full h-full object-cover hidden">
+            <span id="profilePlayerAvatarPlaceholder" class="material-symbols-outlined filled text-md-on-tertiary-container dark:text-md-dark-on-tertiary-container" style="font-size: 36px;">person</span>
+            <label id="profileAvatarOverlayBtn" class="absolute inset-0 bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer hidden" title="Upload player picture">
+              <span class="material-symbols-outlined" style="font-size: 20px;">photo_camera</span>
+              <span class="text-[10px] font-medium">Change</span>
+              <input type="file" id="profilePhotoFileInput" accept="image/*" class="hidden">
+            </label>
+          </div>
+          <div>
+            <h2 id="profilePlayerNameHeading" class="text-2xl font-medium text-md-on-surface dark:text-md-dark-on-surface">Player Film Vault</h2>
+            <p id="profilePlayerSubheading" class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Select a player from the UI below to populate their clips and breakdown.</p>
+          </div>
         </div>
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Seconds of pre-roll on each suggestion.">Lookback (s)</label>
-          <input type="number" id="detectLookback" value="6" step="0.5" min="0" max="60"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
-        </div>
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Seconds of post-roll on each suggestion.">Lead-Out (s)</label>
-          <input type="number" id="detectLeadout" value="4" step="0.5" min="0" max="30"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
-        </div>
-        <div>
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Merge events closer together than this many seconds.">Dedupe Gap (s)</label>
-          <input type="number" id="detectDedupeGap" value="1.5" step="0.5" min="0" max="10"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
-        </div>
-        <div class="sm:col-span-2">
-          <label class="text-[11px] font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant block mb-1" title="Hard cap on returned suggestions.">Max Events</label>
-          <input type="number" id="detectMaxEvents" value="40" step="5" min="1" max="200"
-                 class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-mono">
-        </div>
-        <div class="flex items-end">
-          <button id="resetDetectDefaultsBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-2 !px-3 !text-xs !rounded-full w-full">
-            <span class="material-symbols-outlined" style="font-size: 16px;">restart_alt</span>
-            Defaults
+        <div id="profilePhotoActions" class="flex items-center gap-2 hidden">
+          <label class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2 !px-3.5 !text-xs cursor-pointer flex items-center gap-1.5 shadow-sm">
+            <span class="material-symbols-outlined" style="font-size: 16px;">upload</span>
+            <span id="uploadPhotoBtnText">Upload Picture</span>
+            <input type="file" id="profilePhotoDirectFileInput" accept="image/*" class="hidden">
+          </label>
+          <button id="btnRemovePlayerPhoto" onclick="removeCurrentPlayerPhoto()" class="md-btn-outlined border-md-error dark:border-md-dark-error text-md-error dark:text-md-dark-error !py-2 !px-3 !text-xs hidden" title="Remove picture">
+            <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+            Remove
           </button>
         </div>
       </div>
 
-      <!-- Run / Status -->
-      <div class="flex items-center justify-between gap-3">
-        <div id="autoDetectStatus" class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">Ready to scan.</div>
-        <div class="flex items-center gap-2">
-          <button id="autoDetectRunBtn" class="md-btn-filled bg-md-secondary dark:bg-md-dark-secondary text-md-on-secondary dark:text-md-dark-on-secondary">
-            <span class="material-symbols-outlined" style="font-size: 18px;">graphic_eq</span>
-            Run Scan
-          </button>
-        </div>
-      </div>
-
-      <!-- Results -->
-      <div id="autoDetectResultsWrap" class="hidden flex-col gap-3 pb-3 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
-        <div class="flex justify-between items-center">
-          <h4 class="text-sm font-medium text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
-            <span class="material-symbols-outlined" style="font-size: 18px;">list_alt</span>
-            Suggestions (<span id="autoDetectCount">0</span>)
-          </h4>
+      <!-- Dedicated Player Selection Navigation UI Element -->
+      <div id="playerSelectionCard" class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant p-5 rounded-md-xl shadow-sm flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
           <div class="flex items-center gap-2">
-            <button id="autoDetectAddAllBtn" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-1.5 !px-3 !text-xs">
-              <span class="material-symbols-outlined" style="font-size: 16px;">playlist_add</span>
-              Add All to Pending
+            <span class="material-symbols-outlined text-md-primary dark:text-md-dark-primary" style="font-size: 22px;">group</span>
+            <span class="text-sm font-medium text-md-on-surface dark:text-md-dark-on-surface">Select Player</span>
+            <span id="playerSelectCountBadge" class="text-xs font-mono bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container px-2 py-0.5 rounded-full font-medium">0 players</span>
+          </div>
+
+          <div id="playerViewSelectControls" class="flex flex-wrap items-center gap-3">
+            <label class="text-xs font-medium uppercase text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Roster:</label>
+            <select id="profileRosterSelect" onchange="onProfileRosterChanged()" class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-1.5 text-xs font-medium text-md-on-surface dark:text-md-dark-on-surface"></select>
+            <select id="profilePlayerSelect" onchange="onPlayerSelectDropdownChanged()" class="hidden"></select>
+          </div>
+        </div>
+
+        <!-- Interactive Player Chips Selector -->
+        <div id="profilePlayerChipsContainer" class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
+          <!-- Populated dynamically with player buttons -->
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest p-4 rounded-md-lg border border-md-outline-variant dark:border-md-dark-outline-variant shadow-sm">
+          <span class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 16px;">movie</span>
+            Total Plays
+          </span>
+          <h3 id="statTotalClips" class="text-2xl font-bold text-md-primary dark:text-md-dark-primary mt-1">0</h3>
+        </div>
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest p-4 rounded-md-lg border border-md-outline-variant dark:border-md-dark-outline-variant shadow-sm">
+          <span class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 16px;">schedule</span>
+            Total Film Time
+          </span>
+          <h3 id="statTotalFilmTime" class="text-2xl font-bold text-md-tertiary dark:text-md-dark-tertiary mt-1">0s</h3>
+        </div>
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest p-4 rounded-md-lg border border-md-outline-variant dark:border-md-dark-outline-variant shadow-sm col-span-2">
+          <span class="text-xs font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 16px;">label</span>
+            Tag Breakdown
+          </span>
+          <div id="statTagPills" class="flex flex-wrap gap-1.5 mt-2"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-md-on-surface dark:text-md-dark-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size: 22px;">video_library</span>
+            Clips & Possessions
+          </h3>
+          <span id="playerClipCounter" class="text-xs font-mono font-medium text-md-on-surface-variant dark:text-md-dark-on-surface-variant">0 Clips</span>
+        </div>
+        <div id="playerClipsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= VIEW 3: DEDICATED FILM WORKSPACE ================= -->
+  <section id="workspaceView" style="display: none;" class="flex-1 p-3 sm:p-6 safe-bottom">
+    <div class="w-full flex flex-col lg:grid lg:grid-cols-12 gap-4">
+      
+      <div class="w-full lg:col-span-8 flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg px-4 py-2.5 gap-2 shadow-sm">
+          <div class="flex items-center gap-3 overflow-hidden">
+            <button onclick="switchView('projects')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-1.5 !px-3 !text-sm !rounded-full">
+              <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+              Back
+            </button>
+            <span id="activeProjectNameDisplay" class="text-base font-medium text-md-tertiary dark:text-md-dark-tertiary truncate"></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="activeOpponentDisplay" class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant font-medium hidden"></span>
+            <span id="activeLeagueDisplay" class="text-xs font-mono bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container px-2.5 py-1 rounded-full hidden font-medium"></span>
+            <span id="activeRosterDisplay" class="text-xs font-mono text-md-primary dark:text-md-dark-primary bg-md-primary-container dark:bg-md-dark-primary-container px-2.5 py-1 rounded-full truncate font-medium"></span>
+          </div>
+        </div>
+
+        <div id="videoContainer" class="relative bg-black rounded-md-lg overflow-hidden border border-md-outline-variant dark:border-md-dark-outline-variant flex items-center justify-center w-full aspect-video max-h-[50vh] lg:max-h-[540px] shadow-sm">
+          <video id="videoPlayer" playsinline webkit-playsinline class="w-full h-full object-contain"></video>
+          <canvas id="telestrationCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+
+          <div id="noVideoMsg" class="absolute inset-0 flex flex-col items-center justify-center text-white/70 bg-black/90 p-6 text-center gap-4">
+            <span class="material-symbols-outlined" style="font-size: 64px; opacity: 0.5;">videocam_off</span>
+            <p id="noVideoText" class="text-base sm:text-lg font-medium text-white/80">No video uploaded for this specific game project.</p>
+            <div id="workspaceUploadActionArea" class="flex flex-col items-center gap-3">
+              <label id="uploadVideoLabel" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary cursor-pointer role-editor">
+                <span class="material-symbols-outlined" style="font-size: 20px;">upload</span>
+                Upload Game Video (.mp4)
+                <input type="file" id="videoFileInput" accept="video/*" class="hidden">
+              </label>
+              <p class="text-xs text-white/50">or drag and drop video file here</p>
+            </div>
+
+            <div id="uploadProgressBox" class="w-full max-w-sm flex flex-col gap-2 hidden text-left bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-4 rounded-md-lg border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-2">
+              <div class="flex justify-between items-center text-sm font-medium">
+                <span id="uploadStatusText" class="text-md-on-surface dark:text-md-dark-on-surface font-semibold">Uploading in background...</span>
+                <span id="uploadPercentText" class="font-mono font-bold text-md-primary dark:text-md-dark-primary">0%</span>
+              </div>
+              <div class="w-full h-2 bg-md-surface-container-highest dark:bg-md-dark-surface-container-highest rounded-full overflow-hidden">
+                <div id="uploadProgressBar" class="h-full bg-md-primary dark:bg-md-dark-primary rounded-full transition-all duration-150 ease-out" style="width: 0%;"></div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">You can freely navigate away while uploading.</span>
+                <button type="button" id="workspaceCancelUploadBtn" class="text-xs text-md-error dark:text-md-dark-error hover:underline font-medium flex items-center gap-1">
+                  <span class="material-symbols-outlined" style="font-size: 14px;">cancel</span>
+                  Cancel
+                </button>
+              </div>
+              <div class="flex justify-between items-center text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant font-mono">
+                <span id="uploadBytesText">0 MB / 0 MB</span>
+                <span id="uploadSpeedText">0 MB/s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg px-4 py-2.5 flex flex-col gap-2 shadow-sm">
+          <div class="flex justify-between items-center text-sm font-mono font-bold">
+            <span id="currentTimeDisplay" class="text-md-primary dark:text-md-dark-primary text-base">00:00.00</span>
+            <div class="flex items-center gap-4">
+              <span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant hidden sm:inline font-sans">Hotkeys: <kbd class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-1.5 py-0.5 rounded text-md-tertiary dark:text-md-dark-tertiary font-mono font-bold text-xs">K</kbd> Mark • <kbd class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-1.5 py-0.5 rounded text-md-primary dark:text-md-dark-primary font-mono font-bold text-xs">1-9</kbd> Toggle Tags</span>
+              <span id="durationDisplay" class="text-md-on-surface-variant dark:text-md-dark-on-surface-variant">00:00.00</span>
+            </div>
+          </div>
+
+          <div id="timelineTrack" class="timeline-scrubber relative w-full h-8 bg-md-surface-container-high dark:bg-md-dark-surface-container-high rounded-md-sm cursor-pointer flex items-center select-none overflow-visible">
+            <div id="timelineProgress" class="absolute left-0 top-2 bottom-2 bg-md-primary/60 dark:bg-md-dark-primary/60 rounded-l pointer-events-none" style="width: 0%;"></div>
+            <div id="timelineMarkerRange" class="absolute top-1 bottom-1 bg-md-tertiary/25 dark:bg-md-dark-tertiary/25 border-l border-r border-md-tertiary dark:border-md-dark-tertiary pointer-events-none hidden"></div>
+            <div id="timelineEventDot" class="absolute top-0 bottom-0 w-2 bg-md-tertiary dark:bg-md-dark-tertiary rounded pointer-events-none hidden transform -translate-x-1/2"></div>
+            <div id="timelinePlayhead" class="absolute top-0 bottom-0 w-6 -ml-3 bg-white dark:bg-md-dark-on-surface border border-md-outline dark:border-md-dark-outline rounded-full shadow-md-2 pointer-events-none" style="left: 0%;"></div>
+            <div id="timelineTooltip" class="absolute -top-8 transform -translate-x-1/2 bg-md-inverse-surface dark:bg-md-dark-inverse-surface text-md-inverse-on-surface dark:text-md-dark-inverse-on-surface border border-md-outline-variant dark:border-md-dark-outline-variant px-2 py-0.5 rounded-md-xs text-xs font-mono pointer-events-none hidden whitespace-nowrap shadow-md-2 z-20">00:00.00</div>
+          </div>
+        </div>
+
+        <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg p-3 flex flex-wrap items-center justify-between gap-2.5 text-sm shadow-sm">
+          <div class="flex items-center gap-1.5">
+            <button id="jumpBackBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Jump back 5s">
+              <span class="material-symbols-outlined" style="font-size: 22px;">replay_5</span>
+            </button>
+            <button id="stepBackBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Step back 1 frame">
+              <span class="material-symbols-outlined" style="font-size: 22px;">skip_previous</span>
+            </button>
+            <button id="playPauseBtn" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2.5 !px-6 !text-base !rounded-full min-w-[90px]">
+              <span class="material-symbols-outlined" style="font-size: 22px;">play_arrow</span>
+              Play
+            </button>
+            <button id="stepForwardBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Step forward 1 frame">
+              <span class="material-symbols-outlined" style="font-size: 22px;">skip_next</span>
+            </button>
+            <button id="jumpForwardBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !p-2 !rounded-full" title="Jump forward 5s">
+              <span class="material-symbols-outlined" style="font-size: 22px;">forward_5</span>
+            </button>
+          </div>
+
+          <button id="markEventBtn" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary role-editor !py-2.5 !px-5 !text-base shadow-md-1">
+            <span class="material-symbols-outlined filled" style="font-size: 20px;">bolt</span>
+            Mark Event (K)
+          </button>
+
+          <div class="flex items-center gap-3 ml-auto">
+            <div class="flex items-center gap-2 bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant px-3 py-1.5 rounded-full">
+              <button id="muteBtn" class="text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-primary dark:hover:text-md-dark-primary transition !p-1" title="Toggle Mute (Key: M)">
+                <span id="muteIcon" class="material-symbols-outlined" style="font-size: 20px;">volume_up</span>
+              </button>
+              <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" class="w-16 sm:w-24 md-slider bg-md-surface-container-highest dark:bg-md-dark-surface-container-highest">
+              <span id="volumePct" class="font-mono text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-8 text-right hidden sm:inline">100%</span>
+            </div>
+
+            <select id="playbackRate" class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-full px-3 py-2 text-sm font-medium text-md-on-surface dark:text-md-dark-on-surface min-h-[40px]">
+              <option value="0.25">0.25x</option>
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+            <button id="telestrationToggle" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-3.5 !rounded-full" title="Toggle Drawing Mode">
+              <span class="material-symbols-outlined" style="font-size: 20px;">draw</span>
+            </button>
+            <button id="clearDrawingBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-2 !px-3.5 !rounded-full" title="Clear Drawings">
+              <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
             </button>
           </div>
         </div>
-        <div id="autoDetectResultsList" class="flex flex-col gap-2 max-h-72 overflow-y-auto p-1 bg-md-surface-container-high dark:bg-md-dark-surface-container-high rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant"></div>
       </div>
 
-      <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-md-outline-variant dark:border-md-dark-outline-variant">
-        <button onclick="closeAutoDetectModal()" class="md-btn-outlined border-md-outline dark:border-md-dark-outline text-md-primary dark:text-md-dark-primary">Close</button>
-      </div>
+      <aside class="w-full lg:col-span-4 bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg p-4 flex flex-col min-h-[340px] max-h-[55vh] lg:max-h-[calc(100vh-120px)] shadow-sm">
+        <div class="flex items-center gap-1.5 pb-3 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
+          <button id="tabPendingMarksBtn" class="flex-1 md-btn-filled bg-md-tertiary/20 dark:bg-md-dark-tertiary/20 text-md-tertiary dark:text-md-dark-tertiary !py-2.5 !text-sm !rounded-full border border-md-tertiary/30 dark:border-md-dark-tertiary/30 role-editor">
+            <span class="material-symbols-outlined" style="font-size: 18px;">pending</span>
+            Pending (<span id="pendingCount">0</span>)
+          </button>
+          <button id="tabSavedClipsBtn" class="flex-1 md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-on-surface dark:hover:text-md-dark-on-surface !py-2.5 !text-sm !rounded-full">
+            <span class="material-symbols-outlined" style="font-size: 18px;">video_library</span>
+            Saved (<span id="clipCount">0</span>)
+          </button>
+        </div>
+
+        <div id="pendingMarksPanel" class="flex-1 overflow-y-auto mt-3 flex flex-col gap-2.5 pr-1 role-editor">
+          <div id="pendingMarksList" class="flex flex-col gap-2.5"></div>
+        </div>
+
+        <div id="savedClipsPanel" class="flex-1 overflow-y-auto mt-3 flex flex-col gap-2.5 pr-1 hidden">
+          <div class="flex flex-col gap-2 pb-3 border-b border-md-outline-variant dark:border-md-dark-outline-variant">
+            <div class="flex gap-2">
+              <select id="clipFilter" class="flex-1 bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-medium"></select>
+              <button id="exportZipBtn" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-3 !rounded-md-sm" title="Export ZIP">
+                <span class="material-symbols-outlined" style="font-size: 20px;">folder_zip</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="playerFilterSelect" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-medium">
+                <option value="ALL">All Players</option>
+              </select>
+              <select id="clipSortSelect" class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm px-3 py-2 text-sm text-md-on-surface dark:text-md-dark-on-surface font-medium">
+                <option value="time_asc" selected>Timestamp (0:00 → End)</option>
+                <option value="time_desc">Timestamp (End → 0:00)</option>
+                <option value="created_desc">Newest Created</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="clipList" class="flex-1 overflow-y-auto flex flex-col gap-2.5 mt-1"></div>
+        </div>
+      </aside>
+
     </div>
-  </div>
+  </section>
 
   <!-- ================= GLOBAL TOAST NOTIFICATION ================= -->
   <div id="exportToast" class="md-snackbar fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 bg-md-inverse-surface dark:bg-md-dark-inverse-surface text-md-inverse-on-surface dark:text-md-dark-inverse-on-surface px-5 py-3.5 shadow-md-3">
@@ -3617,19 +3909,15 @@
       container.innerHTML = pendingMarks.map(m => {
         const markCats = m.categories || [m.category || "General"];
         const markPlayers = m.players || [m.player || "Unassigned / Team Play"];
-        const isAutoDetected = m.source === 'auto-whistle';
 
         return `
           <div id="card_${m.id}" class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high p-3 rounded-md-md border ${activePendingId === m.id ? 'border-md-tertiary ring-2 ring-md-tertiary' : 'border-md-outline-variant dark:border-md-dark-outline-variant'} flex flex-col gap-2.5 shadow-sm">
             
             <div class="flex items-center justify-between">
               <button type="button" onclick="seekToStartOfMark('${m.id}')" class="text-sm font-mono font-medium text-md-tertiary dark:text-md-dark-tertiary hover:text-md-tertiary/80 dark:hover:text-md-dark-tertiary/80 flex items-center gap-1.5 active:scale-95 cursor-pointer select-none">
-                ${isAutoDetected
-                  ? `<span class="material-symbols-outlined" style="font-size: 16px;">auto_awesome</span>`
-                  : `<span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>`}
+                <span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>
                 <span>${formatTime(m.startTime)}</span>
                 <span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant font-normal">(${Math.round(m.endTime - m.startTime)}s cut)</span>
-                ${isAutoDetected ? `<span class="text-[10px] uppercase font-mono bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container px-1.5 py-0.5 rounded-full">auto</span>` : ''}
               </button>
               <button type="button" onclick="discardPendingMark('${m.id}')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-error dark:hover:text-md-dark-error !p-1 !rounded-full">
                 <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
@@ -3755,239 +4043,6 @@
         alert('Request timed out or failed to slice clip.');
       }
     };
-
-    // ============================================================
-    // --- AUTO-DETECT EVENTS (Whistle / Dead-Ball Audio Scan) ---
-    // ============================================================
-    const AUTO_DETECT_DEFAULTS = {
-      noise_db: -30,
-      min_silence: 0.35,
-      highpass_hz: 2000,
-      lookback: 6,
-      leadout: 4,
-      dedupe_gap: 1.5,
-      max_events: 40
-    };
-
-    const AUTO_DETECT_FIELDS = {
-      noise_db: 'detectNoiseDb',
-      min_silence: 'detectMinSilence',
-      highpass_hz: 'detectHighpass',
-      lookback: 'detectLookback',
-      leadout: 'detectLeadout',
-      dedupe_gap: 'detectDedupeGap',
-      max_events: 'detectMaxEvents'
-    };
-
-    let autoDetectResults = [];
-
-    function loadAutoDetectSettings() {
-      let stored = {};
-      try {
-        stored = JSON.parse(localStorage.getItem('autoDetectSettings') || '{}') || {};
-      } catch (e) { stored = {}; }
-
-      // Seed lookback/leadout from the user's manual-mark preferences on first use.
-      if (Object.keys(stored).length === 0) {
-        stored.lookback = getLookbackSetting();
-        stored.leadout = getLeadoutSetting();
-      }
-
-      for (const [key, elId] of Object.entries(AUTO_DETECT_FIELDS)) {
-        const el = document.getElementById(elId);
-        if (!el) continue;
-        const val = (stored[key] !== undefined && stored[key] !== null) ? stored[key] : AUTO_DETECT_DEFAULTS[key];
-        el.value = val;
-      }
-    }
-
-    function persistAutoDetectSettings() {
-      const out = {};
-      for (const [key, elId] of Object.entries(AUTO_DETECT_FIELDS)) {
-        const el = document.getElementById(elId);
-        if (el) out[key] = el.value;
-      }
-      localStorage.setItem('autoDetectSettings', JSON.stringify(out));
-    }
-
-    function getAutoDetectSettings() {
-      return {
-        noise_db:    parseFloat(document.getElementById('detectNoiseDb').value) || -30,
-        min_silence: parseFloat(document.getElementById('detectMinSilence').value) || 0.35,
-        highpass_hz: parseInt(document.getElementById('detectHighpass').value) || 2000,
-        lookback:    parseFloat(document.getElementById('detectLookback').value) || 6,
-        leadout:     parseFloat(document.getElementById('detectLeadout').value) || 4,
-        dedupe_gap:  parseFloat(document.getElementById('detectDedupeGap').value) || 1.5,
-        max_events:  parseInt(document.getElementById('detectMaxEvents').value) || 40
-      };
-    }
-
-    window.openAutoDetectModal = () => {
-      if (!currentProjectId) return alert("Open a game film first.");
-      if (!video.duration) return alert("No video loaded for this project.");
-      loadAutoDetectSettings();
-      document.getElementById('autoDetectModal').classList.remove('hidden');
-    };
-
-    window.closeAutoDetectModal = () => {
-      persistAutoDetectSettings();
-      document.getElementById('autoDetectModal').classList.add('hidden');
-    };
-
-    document.getElementById('resetDetectDefaultsBtn').onclick = () => {
-      document.getElementById('detectNoiseDb').value = AUTO_DETECT_DEFAULTS.noise_db;
-      document.getElementById('detectMinSilence').value = AUTO_DETECT_DEFAULTS.min_silence;
-      document.getElementById('detectHighpass').value = AUTO_DETECT_DEFAULTS.highpass_hz;
-      document.getElementById('detectLookback').value = AUTO_DETECT_DEFAULTS.lookback;
-      document.getElementById('detectLeadout').value = AUTO_DETECT_DEFAULTS.leadout;
-      document.getElementById('detectDedupeGap').value = AUTO_DETECT_DEFAULTS.dedupe_gap;
-      document.getElementById('detectMaxEvents').value = AUTO_DETECT_DEFAULTS.max_events;
-      persistAutoDetectSettings();
-    };
-
-    document.getElementById('autoDetectRunBtn').onclick = async () => {
-      const runBtn = document.getElementById('autoDetectRunBtn');
-      const statusEl = document.getElementById('autoDetectStatus');
-      const resultsWrap = document.getElementById('autoDetectResultsWrap');
-      const resultsList = document.getElementById('autoDetectResultsList');
-      const countEl = document.getElementById('autoDetectCount');
-
-      runBtn.disabled = true;
-      runBtn.classList.add('opacity-60', 'cursor-wait');
-      const originalHtml = runBtn.innerHTML;
-      runBtn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="font-size: 18px;">progress_activity</span> Scanning...`;
-      persistAutoDetectSettings();
-      statusEl.innerText = "Analyzing audio track — this can take a minute on long tapes...";
-      statusEl.classList.remove('italic');
-
-      autoDetectResults = [];
-      resultsList.innerHTML = '';
-      resultsWrap.classList.add('hidden');
-      resultsWrap.classList.remove('flex');
-
-      try {
-        const settings = getAutoDetectSettings();
-        const res = await fetch(`/api/projects/${currentProjectId}/detect-events`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(settings)
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ detail: 'Detection failed' }));
-          throw new Error(err.detail || `Server error (${res.status})`);
-        }
-
-        const data = await res.json();
-        autoDetectResults = data.events || [];
-        const scan = data.scan || {};
-
-        countEl.innerText = autoDetectResults.length;
-        statusEl.innerText = `Scan complete. Tape duration: ${scan.tape_duration ? formatTime(scan.tape_duration) : 'unknown'}. ${autoDetectResults.length} suggestion(s).`;
-        statusEl.classList.add('italic');
-
-        if (autoDetectResults.length === 0) {
-          resultsList.innerHTML = `<div class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic text-center py-6">No events detected. Try lowering the noise floor (e.g. -35 dB) or increasing sensitivity.</div>`;
-        } else {
-          resultsList.innerHTML = autoDetectResults.map((ev, idx) => `
-            <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm p-2.5 flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2 overflow-hidden">
-                <span class="material-symbols-outlined text-md-secondary dark:text-md-dark-secondary" style="font-size: 18px;">sports_score</span>
-                <div class="flex flex-col">
-                  <span class="text-xs font-mono font-bold text-md-primary dark:text-md-dark-primary">${formatTime(ev.event_time)}</span>
-                  <span class="text-[10px] text-md-on-surface-variant dark:text-md-dark-on-surface-variant font-mono">cut ${formatTime(ev.start_time)} → ${formatTime(ev.end_time)}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button type="button" onclick="previewAutoDetectEvent(${idx})" class="md-btn-text text-md-secondary dark:text-md-dark-secondary !p-1.5 !rounded-full" title="Preview in player">
-                  <span class="material-symbols-outlined" style="font-size: 18px;">play_circle</span>
-                </button>
-                <button type="button" onclick="addAutoDetectEventToPending(${idx})" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-1 !px-2.5 !text-xs">
-                  <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
-                  Mark
-                </button>
-              </div>
-            </div>
-          `).join('');
-        }
-
-        resultsWrap.classList.remove('hidden');
-        resultsWrap.classList.add('flex');
-      } catch (err) {
-        statusEl.innerText = `Scan failed: ${err.message}`;
-        statusEl.classList.remove('italic');
-      } finally {
-        runBtn.disabled = false;
-        runBtn.classList.remove('opacity-60', 'cursor-wait');
-        runBtn.innerHTML = originalHtml;
-      }
-    };
-
-    window.previewAutoDetectEvent = (idx) => {
-      const ev = autoDetectResults[idx];
-      if (!ev || !video.duration) return;
-      video.pause();
-      video.currentTime = ev.start_time;
-      video.play().catch(() => {});
-      updateTimelineMarkerOverlay({
-        startTime: ev.start_time,
-        endTime: ev.end_time,
-        eventTime: ev.event_time
-      });
-      activePendingId = null;
-    };
-
-    window.addAutoDetectEventToPending = (idx) => {
-      const ev = autoDetectResults[idx];
-      if (!ev) return;
-
-      const rosterPlayers = getCurrentRosterPlayers();
-      const newMark = {
-        id: "mark_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-        eventTime: ev.event_time,
-        startTime: ev.start_time,
-        endTime: ev.end_time,
-        categories: [categories[0] || "Play"],
-        players: [rosterPlayers[0] || "Unassigned / Team Play"],
-        annotation: "",
-        notes: "",
-        source: ev.source || "auto-whistle"
-      };
-
-      pendingMarks.unshift(newMark);
-      savePendingMarks();
-      renderPendingMarks();
-      tabPendingMarksBtn.click();
-    };
-
-    document.getElementById('autoDetectAddAllBtn').onclick = () => {
-      if (autoDetectResults.length === 0) return;
-      if (!confirm(`Add all ${autoDetectResults.length} suggestions to the pending queue?`)) return;
-
-      const rosterPlayers = getCurrentRosterPlayers();
-      const baseTs = Date.now();
-      autoDetectResults.forEach((ev, i) => {
-        pendingMarks.push({
-          id: `mark_${baseTs}_${i}_${Math.random().toString(36).slice(2, 6)}`,
-          eventTime: ev.event_time,
-          startTime: ev.start_time,
-          endTime: ev.end_time,
-          categories: [categories[0] || "Play"],
-          players: [rosterPlayers[0] || "Unassigned / Team Play"],
-          annotation: "",
-          notes: "",
-          source: ev.source || "auto-whistle"
-        });
-      });
-      pendingMarks.sort((a, b) => b.eventTime - a.eventTime);
-      savePendingMarks();
-      renderPendingMarks();
-      closeAutoDetectModal();
-      tabPendingMarksBtn.click();
-    };
-
-    // Wire the "Detect Events" button in the workspace toolbar.
-    document.getElementById('autoDetectBtn').onclick = window.openAutoDetectModal;
 
     // --- Saved Clips & Multi-Tag/Multi-Player Editing ---
     let cachedClips = [];
