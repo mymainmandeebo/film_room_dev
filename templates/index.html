@@ -1100,6 +1100,27 @@
           </div>
         </div>
 
+        <!-- Uploaded-video auto-tagging & AI-assisted review -->
+        <section id="aiTaggingPanel" class="rounded-md-lg border border-md-outline-variant dark:border-md-dark-outline-variant bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest p-3 flex flex-col gap-3 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-md-primary dark:text-md-dark-primary">auto_awesome</span>
+              <div><h3 class="font-medium text-sm">Auto-Tag Uploaded Video</h3><p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Scan the uploaded game video for likely whistles and stoppages, then save tagged clips</p></div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <button id="detectEventsBtn" type="button" class="md-btn-outlined border-md-outline dark:border-md-dark-outline text-md-primary dark:text-md-dark-primary !py-2 !px-3 !text-xs role-editor"><span class="material-symbols-outlined" style="font-size:16px">graphic_eq</span> Auto-tag uploaded video</button>
+            <button id="voiceNoteBtn" type="button" class="md-btn-outlined border-md-outline dark:border-md-dark-outline text-md-primary dark:text-md-dark-primary !py-2 !px-3 !text-xs role-editor"><span class="material-symbols-outlined" style="font-size:16px">mic</span> Record voice note</button>
+            <span id="aiTaggingStatus" aria-live="polite" class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Auto-tagging analyzes the uploaded video file; no live stream or microphone input is used.</span>
+          </div>
+          <div id="detectedEventsList" class="hidden flex flex-col gap-2"></div>
+          <div id="voiceNoteTranscriptWrap" class="hidden flex flex-col gap-1">
+            <label for="voiceNoteTranscript" class="text-xs font-medium">Transcribed coaching note (editable)</label>
+            <textarea id="voiceNoteTranscript" rows="2" maxlength="100" placeholder="Your note will appear here…" class="w-full rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-3 py-2 text-sm"></textarea>
+            <button id="attachVoiceNoteBtn" type="button" class="md-btn-tonal bg-md-secondary-container dark:bg-md-dark-secondary-container text-md-on-secondary-container dark:text-md-dark-on-secondary-container self-start !py-1.5 !px-3 !text-xs">Attach note to pending clip</button>
+          </div>
+        </section>
+
         <div class="bg-md-surface-container-lowest dark:bg-md-dark-surface-container-lowest border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-lg px-4 py-2.5 flex flex-col gap-2 shadow-sm">
           <div class="flex justify-between items-center text-sm font-mono font-bold">
             <span id="currentTimeDisplay" class="text-md-primary dark:text-md-dark-primary text-base">00:00.00</span>
@@ -4779,6 +4800,122 @@
     window.addEventListener('touchend', endDraw);
 
     checkAuth();
+
+    // --- Uploaded-video auto-tagging and speech-to-text notes ---
+    const aiStatus = document.getElementById('aiTaggingStatus');
+    const detectedEventsList = document.getElementById('detectedEventsList');
+    let voiceRecorder = null;
+    let voiceChunks = [];
+    let voiceNoteBusy = false;
+    let autoTagBusy = false;
+
+    function setAiStatus(message, isError = false) {
+      if (!aiStatus) return;
+      aiStatus.textContent = message;
+      aiStatus.classList.toggle('text-md-error', isError);
+      aiStatus.classList.toggle('dark:text-md-dark-error', isError);
+    }
+
+    document.getElementById('detectEventsBtn')?.addEventListener('click', async () => {
+      if (!currentProjectId) return setAiStatus('Open a project with an uploaded video first.', true);
+      if (currentUser && ['viewer', 'player'].includes(currentUser.role)) return setAiStatus('Your role cannot create clips.', true);
+      if (autoTagBusy) return;
+      const btn = document.getElementById('detectEventsBtn');
+      autoTagBusy = true;
+      btn.disabled = true;
+      detectedEventsList.classList.remove('hidden');
+      detectedEventsList.textContent = 'Analyzing the uploaded video audio for likely whistle / stoppage events…';
+      setAiStatus('Scanning the uploaded game video. This may take a few minutes…');
+      try {
+        const res = await fetch(`/api/projects/${currentProjectId}/detect-events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ lookback: lookbackSeconds, leadout: leadoutSeconds, max_events: 40 })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Video analysis failed');
+        if (!data.events?.length) {
+          detectedEventsList.innerHTML = '<p class="text-xs text-md-on-surface-variant">No likely whistle / stoppage events found. Audio-based detection is approximate and may miss events or flag false positives.</p>';
+          setAiStatus('Auto-tag scan complete. No candidate events found.');
+          return;
+        }
+
+        let saved = 0;
+        const failures = [];
+        for (const ev of data.events) {
+          try {
+            const clipRes = await fetch('/api/clips', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({
+                project_id: currentProjectId,
+                start_time: ev.start_time,
+                end_time: ev.end_time,
+                categories: ['Possible Stoppage'],
+                players: ['Unassigned / Team Play'],
+                annotation: `Auto-detected from uploaded video at ${formatTime(ev.event_time)}`,
+                notes: 'Automatically tagged from uploaded video audio; review for accuracy.'
+              })
+            });
+            if (!clipRes.ok) {
+              const err = await clipRes.json().catch(() => ({}));
+              throw new Error(err.detail || 'Clip save failed');
+            }
+            saved++;
+          } catch (err) { failures.push(`${formatTime(ev.event_time)}: ${err.message}`); }
+        }
+
+        detectedEventsList.innerHTML = '<p class="text-xs font-medium">' + saved + ' of ' + data.events.length + ' auto-tagged clip(s) saved</p>' +
+          data.events.map(ev => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant p-2"><span class="text-xs">Possible stoppage · ${formatTime(ev.event_time)} <span class="opacity-60">(${formatTime(ev.start_time)}–${formatTime(ev.end_time)})</span></span><span class="text-xs ${failures.some(f => f.startsWith(formatTime(ev.event_time) + ':')) ? 'text-md-error' : 'text-md-on-surface-variant'}">${failures.some(f => f.startsWith(formatTime(ev.event_time) + ':')) ? 'Save failed' : 'Tagged'}</span></div>`).join('');
+        await loadClips();
+        setAiStatus(`Auto-tagging complete: ${saved} clip(s) saved from the uploaded video.${failures.length ? ` ${failures.length} failed to save; review the event list.` : ''}` , failures.length > 0);
+      } catch (err) {
+        detectedEventsList.textContent = err.message || 'Video analysis failed.';
+        setAiStatus(err.message || 'Video analysis failed.', true);
+      } finally {
+        autoTagBusy = false;
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('voiceNoteBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('voiceNoteBtn');
+      if (voiceNoteBusy) return;
+      if (voiceRecorder && voiceRecorder.state === 'recording') { voiceRecorder.stop(); return; }
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return setAiStatus('This browser does not support microphone recording.', true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        voiceChunks = []; voiceRecorder = new MediaRecorder(stream);
+        voiceRecorder.ondataavailable = e => { if (e.data?.size) voiceChunks.push(e.data); };
+        voiceRecorder.onstop = async () => {
+          stream.getTracks().forEach(track => track.stop()); btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">mic</span> Record voice note';
+          voiceNoteBusy = true; setAiStatus('Transcribing voice note…');
+          try {
+            const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || 'audio/webm' });
+            const form = new FormData(); form.append('audio', blob, 'voice-note.webm');
+            const res = await fetch('/api/transcribe', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form });
+            const data = await res.json(); if (!res.ok) throw new Error(data.detail || 'Transcription failed');
+            document.getElementById('voiceNoteTranscript').value = (data.transcript || '').slice(0,100);
+            document.getElementById('voiceNoteTranscriptWrap').classList.remove('hidden');
+            setAiStatus(data.transcript ? 'Transcript ready. Edit it, then attach it to a pending clip.' : 'No speech was recognized. Try recording again.');
+          } catch (err) { setAiStatus(err.message || 'Could not transcribe note.', true); } finally { voiceNoteBusy = false; }
+        };
+        voiceRecorder.start(); btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">stop_circle</span> Stop & transcribe';
+        setAiStatus('Recording… speak your coaching note, then press Stop & transcribe.');
+        setTimeout(() => { if (voiceRecorder?.state === 'recording') voiceRecorder.stop(); }, 15000);
+      } catch (err) { setAiStatus('Microphone permission is required to record a voice note.', true); }
+    });
+
+    document.getElementById('attachVoiceNoteBtn')?.addEventListener('click', () => {
+      const transcript = (document.getElementById('voiceNoteTranscript').value || '').trim().slice(0,100);
+      if (!transcript) return setAiStatus('Enter or record a note first.', true);
+      if (!pendingMarks.length) addPendingMark();
+      const target = pendingMarks.find(m => m.id === activePendingId) || pendingMarks[0];
+      if (!target) return setAiStatus('Could not create a pending clip. Load a video first.', true);
+      target.annotation = transcript; savePendingMarks(); renderPendingMarks();
+      setAiStatus('Voice note attached to pending clip. Save the clip to keep the annotation.');
+    });
+
   </script>
 </body>
 </html>
