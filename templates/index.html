@@ -1246,18 +1246,6 @@
 
           <span class="w-px h-5 bg-md-outline-variant dark:bg-md-dark-outline-variant mx-0.5 shrink-0 hidden sm:inline"></span>
 
-          <button type="button" id="qtJumpBackBtn" class="quick-toggle-btn" title="Jump back 5 seconds">
-            <span class="material-symbols-outlined">replay_5</span>
-            <span class="hidden md:inline">-5s</span>
-          </button>
-
-          <button type="button" id="qtJumpFwdBtn" class="quick-toggle-btn" title="Jump forward 5 seconds">
-            <span class="material-symbols-outlined">forward_5</span>
-            <span class="hidden md:inline">+5s</span>
-          </button>
-
-          <span class="w-px h-5 bg-md-outline-variant dark:bg-md-dark-outline-variant mx-0.5 shrink-0 hidden sm:inline"></span>
-
           <button type="button" id="qtFullscreenBtn" class="quick-toggle-btn" title="Toggle Fullscreen">
             <span class="material-symbols-outlined">fullscreen</span>
             <span class="hidden md:inline">Fullscreen</span>
@@ -3034,8 +3022,6 @@
         const loopBtn = document.getElementById('qtLoopBtn');
         const pipBtn = document.getElementById('qtPipBtn');
         const speedBtn = document.getElementById('qtSpeedBtn');
-        const jumpBack = document.getElementById('qtJumpBackBtn');
-        const jumpFwd = document.getElementById('qtJumpFwdBtn');
         const fsBtn = document.getElementById('qtFullscreenBtn');
         const resetBtn = document.getElementById('qtResetBtn');
 
@@ -3087,20 +3073,6 @@
             }
             document.getElementById('qtSpeedLabel').innerText = `${next.toFixed(1)}x`;
             speedBtn.classList.toggle('active', next !== 1);
-          });
-        }
-
-        if (jumpBack) {
-          jumpBack.addEventListener('click', () => {
-            video.currentTime = Math.max(0, video.currentTime - 5);
-          });
-        }
-
-        if (jumpFwd) {
-          jumpFwd.addEventListener('click', () => {
-            if (video.duration) {
-              video.currentTime = Math.min(video.duration, video.currentTime + 5);
-            }
           });
         }
 
