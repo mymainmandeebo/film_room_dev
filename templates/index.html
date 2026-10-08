@@ -512,7 +512,7 @@
       </div>
 
       <div class="bg-md-surface-container dark:bg-md-dark-surface-container p-4 rounded-md-md flex flex-col gap-3">
-        <h4 class="text-sm font-medium text-md-tertiary dark:text-md-dark-tertiary uppercase tracking-wider flex items-center gap-2">
+        <h4 id="userFormTitle" class="text-sm font-medium text-md-tertiary dark:text-md-dark-tertiary uppercase tracking-wider flex items-center gap-2">
           <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
           Create Account
         </h4>
@@ -547,10 +547,12 @@
           <div id="projectCheckboxes" class="flex flex-col gap-1.5 max-h-28 overflow-y-auto p-2 bg-md-surface-container-high dark:bg-md-dark-surface-container-high rounded-md-sm border border-md-outline-variant dark:border-md-dark-outline-variant text-xs"></div>
         </div>
 
-        <button id="createUserSubmitBtn" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary mt-1">
-          <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-          Create Account
-        </button>
+        <div class="flex items-center gap-2 mt-1">
+          <button id="createUserSubmitBtn" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary">
+            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+            Create Account
+          </button>
+        </div>
       </div>
 
       <div>
@@ -1575,6 +1577,36 @@
       document.getElementById('userModal').classList.remove('hidden');
     };
 
+    let editingUserId = null;
+
+    window.editUserAccount = async (userId) => {
+      const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+      const users = await res.json();
+      const u = users.find(x => x.id === userId);
+      if (!u) return;
+
+      editingUserId = userId;
+      document.getElementById('newUsername').value = u.username;
+      document.getElementById('newUsername').disabled = true;
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newPassword').placeholder = 'Leave blank to keep current';
+      document.getElementById('newUserRole').value = u.role;
+      togglePlayerRoleFields();
+
+      if (u.role === 'player') {
+        document.getElementById('assignPlayerSelect').value = u.player_name || '';
+      } else {
+        document.querySelectorAll('.project-assign-cb').forEach(cb => {
+          cb.checked = u.project_ids && (u.project_ids.includes('*') || u.project_ids.includes(cb.value));
+        });
+      }
+
+      const btn = document.getElementById('createUserSubmitBtn');
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">save</span> Update Account`;
+      const title = document.getElementById('userFormTitle');
+      if(title) title.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">manage_accounts</span> Edit Account`;
+    };
+
     function togglePlayerRoleFields() {
       const role = document.getElementById('newUserRole').value;
       const playerBox = document.getElementById('playerAssignmentBox');
@@ -1612,6 +1644,21 @@
       }).join('');
     }
 
+    window.cancelEditUser = () => {
+      editingUserId = null;
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newUsername').disabled = false;
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newPassword').placeholder = 'Set password';
+      document.getElementById('newUserRole').value = 'coach';
+      togglePlayerRoleFields();
+      document.querySelectorAll('.project-assign-cb').forEach(cb => cb.checked = false);
+      const btn = document.getElementById('createUserSubmitBtn');
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">add</span> Create Account`;
+      const title = document.getElementById('userFormTitle');
+      if(title) title.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px;">person_add</span> Create Account`;
+    };
+
     document.getElementById('createUserSubmitBtn').onclick = async () => {
       const u = document.getElementById('newUsername').value.trim();
       const p = document.getElementById('newPassword').value;
@@ -1619,28 +1666,34 @@
       const checkedProjectIds = Array.from(document.querySelectorAll('.project-assign-cb:checked')).map(cb => cb.value);
       const assignedPlayer = role === 'player' ? document.getElementById('assignPlayerSelect').value : null;
 
-      if (!u || !p) return alert("Username & Password required.");
+      if (!u) return alert("Username required.");
+      if (!editingUserId && !p) return alert("Password required for new user.");
       if (role === 'player' && !assignedPlayer) return alert("Must select a player to link to this account.");
 
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          username: u,
-          password: p,
+      const payload = {
           role: role,
           player_name: assignedPlayer,
           project_ids: (role === 'admin' || role === 'player') ? ["*"] : checkedProjectIds
-        })
+      };
+      if (p) payload.password = p;
+
+      const url = editingUserId ? `/api/admin/users/${editingUserId}` : '/api/admin/users';
+      const method = editingUserId ? 'PUT' : 'POST';
+
+      if (!editingUserId) payload.username = u;
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        document.getElementById('newUsername').value = '';
-        document.getElementById('newPassword').value = '';
+        window.cancelEditUser();
         loadUsersList();
       } else {
         const err = await res.json();
-        alert(err.detail || "Failed to create user");
+        alert(err.detail || "Failed to save user");
       }
     };
 
@@ -1666,10 +1719,16 @@
               ${u.player_name ? `<span class="text-xs text-md-tertiary dark:text-md-dark-tertiary font-medium truncate">(${u.player_name})</span>` : ''}
             </div>
             ${!isSelf ? `
-              <button onclick="deleteUserAccount('${u.id}')" class="md-btn-text text-md-error dark:text-md-dark-error hover:bg-md-error-container/20 dark:hover:bg-md-dark-error-container/20 !py-1 !px-2 !rounded-full !text-xs">
-                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
-                Delete
-              </button>
+              <div class="flex items-center gap-1">
+                <button onclick="editUserAccount('${u.id}')" class="md-btn-text text-md-primary dark:text-md-dark-primary hover:bg-md-primary-container/20 dark:hover:bg-md-dark-primary-container/20 !py-1 !px-2 !rounded-full !text-xs">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+                  Edit
+                </button>
+                <button onclick="deleteUserAccount('${u.id}')" class="md-btn-text text-md-error dark:text-md-dark-error hover:bg-md-error-container/20 dark:hover:bg-md-dark-error-container/20 !py-1 !px-2 !rounded-full !text-xs">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                  Delete
+                </button>
+              </div>
             ` : '<span class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant italic">Active</span>'}
           </div>
         `;
