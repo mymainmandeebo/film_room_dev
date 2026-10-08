@@ -635,35 +635,6 @@
         <div id="usersList" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
       </div>
 
-      <!-- Backup & Restore (Admin) -->
-      <div class="bg-md-surface-container dark:bg-md-dark-surface-container p-4 rounded-md-md flex flex-col gap-3 border border-md-outline-variant dark:border-md-dark-outline-variant">
-        <div class="flex items-center justify-between">
-          <h4 class="text-sm font-medium text-md-tertiary dark:text-md-dark-tertiary uppercase tracking-wider flex items-center gap-2">
-            <span class="material-symbols-outlined" style="font-size: 18px;">backup</span>
-            Backup & Restore
-          </h4>
-          <span class="text-[11px] font-mono text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Admin only</span>
-        </div>
-        <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant leading-relaxed">
-          Export the full data store (users, games, rosters, clip metadata, reels, player photos mapping) <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">plus all sliced clips</span> as a single ZIP file.
-          Original game tapes are <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">not</span> included — back up the <code class="font-mono text-[10px] bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-1 py-0.5 rounded">data/uploads/</code> folder separately if needed.
-        </p>
-        <div class="flex flex-wrap items-center gap-2">
-          <button id="btnDownloadBackup" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2 !px-3.5 !text-xs">
-            <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
-            Download Backup
-          </button>
-          <label class="md-btn-outlined border-md-tertiary dark:border-md-dark-tertiary text-md-tertiary dark:text-md-dark-tertiary !py-2 !px-3.5 !text-xs cursor-pointer flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size: 16px;">upload_file</span>
-            Restore From File
-            <input type="file" id="restoreFileInput" accept=".zip,.json,application/zip,application/json" class="hidden">
-          </label>
-        </div>
-        <p id="restoreStatusMsg" class="text-xs font-medium hidden"></p>
-      </div>
-    </div>
-  </div>
-
   <!-- ================= CREATE / EDIT PROJECT MODAL ================= -->
   <div id="projectModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm max-h-[92vh] overflow-y-auto">
     <div class="md-dialog bg-md-surface-container-lowest dark:bg-md-dark-surface-container-low border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-3 w-full max-w-lg flex flex-col gap-4">
@@ -827,6 +798,33 @@
           <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
           Save Preferences
         </button>
+      </div>
+
+      <!-- Backup & Restore (Admin) -->
+      <div id="backupRestoreSection" class="hidden bg-md-surface-container dark:bg-md-dark-surface-container p-4 rounded-md-md flex flex-col gap-3 border border-md-outline-variant dark:border-md-dark-outline-variant mt-1">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-medium text-md-tertiary dark:text-md-dark-tertiary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size: 18px;">backup</span>
+            Backup & Restore
+          </h4>
+          <span class="text-[11px] font-mono text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Admin only</span>
+        </div>
+        <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant leading-relaxed">
+          Export the full data store (users, games, rosters, clip metadata, reels, player photos mapping) <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">plus all sliced clips</span> as a single ZIP file.
+          Original game tapes are <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">not</span> included — back up the <code class="font-mono text-[10px] bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-1 py-0.5 rounded">data/uploads/</code> folder separately if needed.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnDownloadBackup" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2 !px-3.5 !text-xs">
+            <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+            Download Backup
+          </button>
+          <label class="md-btn-outlined border-md-tertiary dark:border-md-dark-tertiary text-md-tertiary dark:text-md-dark-tertiary !py-2 !px-3.5 !text-xs cursor-pointer flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 16px;">upload_file</span>
+            Restore From File
+            <input type="file" id="restoreFileInput" accept=".zip,.json,application/zip,application/json" class="hidden">
+          </label>
+        </div>
+        <p id="restoreStatusMsg" class="text-xs font-medium hidden"></p>
       </div>
     </div>
   </div>
@@ -2757,6 +2755,11 @@
     document.getElementById('openSettingsBtn').onclick = () => {
       updateSettingsUI();
       loadSportIntoEditor(currentSport);
+
+      const backupSection = document.getElementById('backupRestoreSection');
+      if (backupSection) {
+        backupSection.classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+      }
       document.getElementById('settingsModal').classList.remove('hidden');
     };
     document.getElementById('closeSettingsBtn').onclick = () => document.getElementById('settingsModal').classList.add('hidden');
