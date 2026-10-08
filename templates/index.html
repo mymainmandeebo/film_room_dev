@@ -472,11 +472,11 @@
   <div id="reelModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm">
     <div class="md-dialog bg-md-surface-container-lowest dark:bg-md-dark-surface-container-low border border-md-outline-variant dark:border-md-dark-outline-variant shadow-md-3 w-full max-w-md flex flex-col gap-4">
       <div class="flex justify-between items-center border-b border-md-outline-variant dark:border-md-dark-outline-variant pb-3">
-        <h3 class="text-lg font-medium text-md-tertiary dark:text-md-dark-tertiary flex items-center gap-2">
+        <h3 id="reelModalTitle" class="text-lg font-medium text-md-tertiary dark:text-md-dark-tertiary flex items-center gap-2">
           <span class="material-symbols-outlined" style="font-size: 20px;">video_library</span>
           Create Custom Reel
         </h3>
-        <button onclick="document.getElementById('reelModal').classList.add('hidden')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-10 h-10 p-0 rounded-full">
+        <button onclick="closeReelModal()" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-10 h-10 p-0 rounded-full">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -489,8 +489,8 @@
         <textarea id="newReelDescInput" placeholder="Focus points for film session..." class="w-full bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-md-sm p-4 text-sm text-md-on-surface dark:text-md-dark-on-surface resize-none" rows="4"></textarea>
       </div>
       <button id="submitCreateReelBtn" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary">
-        <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-        Create Playlist Reel
+        <span id="submitCreateReelIcon" class="material-symbols-outlined" style="font-size: 18px;">add</span>
+        <span id="submitCreateReelText">Create Playlist Reel</span>
       </button>
     </div>
   </div>
@@ -809,7 +809,7 @@
             </h2>
             <p class="text-sm text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Curate multi-game review reels.</p>
           </div>
-          <button onclick="document.getElementById('reelModal').classList.remove('hidden')" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-4 !text-sm">
+          <button onclick="openReelModal(null)" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-4 !text-sm">
             <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
             New Reel
           </button>
@@ -1156,6 +1156,7 @@
     let isScrubbing = false;
 
     let editingProjectId = null;
+    let editingReelId = null;
     let editingRosterIndex = null;
     let currentClipToReel = null;
     let selectedProfilePlayer = null;
@@ -1792,9 +1793,14 @@
                   ${(r.clip_ids || []).length} Plays in Reel
                 </span>
               </div>
-              <button onclick="deleteReel('${r.id}')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-error dark:hover:text-md-dark-error !p-1.5 !rounded-full">
-                <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
-              </button>
+              <div class="flex items-center gap-1">
+                <button onclick="openReelModal('${r.id}')" class="md-btn-text text-md-primary dark:text-md-dark-primary !p-1.5 !rounded-full" title="Edit Reel Details">
+                  <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                </button>
+                <button onclick="deleteReel('${r.id}')" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-error dark:hover:text-md-dark-error !p-1.5 !rounded-full" title="Delete Reel">
+                  <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+                </button>
+              </div>
             </div>
             <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant mt-1 line-clamp-2">${r.description || 'Continuous film review reel'}</p>
           </div>
@@ -1899,22 +1905,57 @@
       }
     };
 
+    window.openReelModal = (reelId = null) => {
+      editingReelId = reelId;
+      const modal = document.getElementById('reelModal');
+      const titleEl = document.getElementById('reelModalTitle');
+      const titleInput = document.getElementById('newReelTitleInput');
+      const descInput = document.getElementById('newReelDescInput');
+      const iconEl = document.getElementById('submitCreateReelIcon');
+      const textEl = document.getElementById('submitCreateReelText');
+
+      if (reelId) {
+        const r = reels.find(x => x.id === reelId);
+        titleEl.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">edit_note</span> Edit Playlist Reel';
+        titleInput.value = r ? (r.title || '') : '';
+        descInput.value = r ? (r.description || '') : '';
+        if (iconEl) iconEl.innerText = 'save';
+        if (textEl) textEl.innerText = 'Update Reel';
+      } else {
+        titleEl.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">video_library</span> Create Custom Reel';
+        titleInput.value = '';
+        descInput.value = '';
+        if (iconEl) iconEl.innerText = 'add';
+        if (textEl) textEl.innerText = 'Create Playlist Reel';
+      }
+      modal.classList.remove('hidden');
+    };
+
+    window.closeReelModal = () => {
+      editingReelId = null;
+      document.getElementById('reelModal').classList.add('hidden');
+    };
+
     document.getElementById('submitCreateReelBtn').onclick = async () => {
       const title = document.getElementById('newReelTitleInput').value.trim();
       const description = document.getElementById('newReelDescInput').value.trim();
       if (!title) return alert("Reel title required.");
 
-      const res = await fetch('/api/reels', {
-        method: 'POST',
+      const url = editingReelId ? `/api/reels/${editingReelId}` : '/api/reels';
+      const method = editingReelId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ title, description })
       });
 
       if (res.ok) {
-        document.getElementById('newReelTitleInput').value = '';
-        document.getElementById('newReelDescInput').value = '';
-        document.getElementById('reelModal').classList.add('hidden');
+        closeReelModal();
         await loadReels();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to save reel.');
       }
     };
 

@@ -714,6 +714,10 @@ class ReelCreatePayload(BaseModel):
     title: str
     description: Optional[str] = ""
 
+class ReelUpdatePayload(BaseModel):
+    title: str
+    description: Optional[str] = ""
+
 class ReelUpdateClipsPayload(BaseModel):
     clip_ids: List[str]
 
@@ -738,6 +742,20 @@ def create_reel(payload: ReelCreatePayload, user: dict = Depends(get_current_use
     db["reels"].append(new_reel)
     write_db(db)
     return new_reel
+
+@app.put("/api/reels/{reel_id}")
+def update_reel(reel_id: str, payload: ReelUpdatePayload, user: dict = Depends(get_current_user)):
+    if user["role"] in ["viewer", "player"]:
+        raise HTTPException(status_code=403, detail="Permission denied to modify reels")
+    db = read_db()
+    reel = next((r for r in db["reels"] if r["id"] == reel_id), None)
+    if not reel:
+        raise HTTPException(status_code=404, detail="Reel not found")
+
+    reel["title"] = payload.title.strip()
+    reel["description"] = payload.description.strip()
+    write_db(db)
+    return reel
 
 @app.get("/api/reels/{reel_id}")
 def get_reel(reel_id: str, user: dict = Depends(get_current_user)):
