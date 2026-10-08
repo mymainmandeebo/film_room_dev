@@ -1340,6 +1340,28 @@
       requestAnimationFrame(() => syncCanvas());
     }
 
+    // Indeterminate progress bar animation for phases where we can't
+    // compute a real percentage (e.g. server is zipping files before streaming).
+    let indeterminateTimer = null;
+    function startIndeterminateBar(barEl) {
+      stopIndeterminateBar();
+      if (!barEl) return;
+      barEl.style.transition = 'none';
+      let pos = 0;
+      indeterminateTimer = setInterval(() => {
+        pos += 3;
+        if (pos > 100) pos = 0;
+        barEl.style.width = '40%';
+        barEl.style.transform = `translateX(${(pos - 40) * 2.5}%)`;
+      }, 40);
+    }
+    function stopIndeterminateBar() {
+      if (indeterminateTimer) {
+        clearInterval(indeterminateTimer);
+        indeterminateTimer = null;
+      }
+    }
+
     const savedCompact = localStorage.getItem('compactMode') === 'true';
     applyCompact(savedCompact);
 
