@@ -4709,34 +4709,7 @@
 
     checkAuth();
 
-    async function applyEnvironmentLabel() {
-      try {
-        const res = await fetch('/api/config');
-        if (!res.ok) return;
-        const config = await res.json();
-        const env = (config.env || 'PROD').toUpperCase();
-
-        if (env === 'DEV') {
-          document.title = '[DEV] Sports Film Room';
-        } else {
-          document.title = 'Sports Film Room';
-        }
-
-        const badge = document.getElementById('envBadge');
-        if (badge) {
-          if (env === 'DEV') {
-            badge.innerText = 'DEV';
-            badge.className = 'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-500 border border-amber-500/40 inline-block';
-          } else {
-            badge.classList.add('hidden');
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load environment config:', err);
-      }
-    }
-
-    applyEnvironmentLabel();
+    
   </script>
 </body>
 </html>

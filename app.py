@@ -19,9 +19,8 @@ from starlette.background import BackgroundTask
 
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-tactics-key-change-in-prod")
 ALGORITHM = "HS256"
-APP_ENV = os.getenv("APP_ENV", "PROD").upper()
 
-app = FastAPI(title=f"Sports Film Room Analyzer ({APP_ENV})")
+app = FastAPI(title="Sports Film Room Analyzer")
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -40,6 +39,8 @@ app.mount("/media/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="upload
 app.mount("/media/clips", StaticFiles(directory=str(CLIPS_DIR)), name="clips")
 app.mount("/media/reels", StaticFiles(directory=str(REELS_DIR)), name="reels")
 app.mount("/media/players", StaticFiles(directory=str(PLAYERS_DIR)), name="players")
+
+
 
 def sanitize_for_filename(name: Optional[str], default: str = "Unassigned") -> str:
     if not name or not name.strip():
@@ -107,9 +108,6 @@ def read_db():
     try:
         with open(DB_FILE, "r") as f:
             data = json.load(f)
-            data.setdefault("users", [])
-            data.setdefault("projects", [])
-            data.setdefault("clips", [])
             data.setdefault("reels", [])
             data.setdefault("rosters", [])
             data.setdefault("player_photos", {})
@@ -121,7 +119,6 @@ def read_db():
                 if "players" not in c:
                     c["players"] = [c["player"]] if c.get("player") else ["Unassigned / Team Play"]
                 c.setdefault("sport", "Basketball")
-                c.setdefault("outcome", "neutral")
                 c.setdefault("annotation", "")
             return data
     except Exception:
@@ -145,19 +142,7 @@ def create_token(user: dict) -> str:
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        db = read_db()
-        live_user = next((u for u in db["users"] if u["id"] == payload.get("sub")), None)
-        if live_user:
-            return {
-                "sub": live_user["id"],
-                "id": live_user["id"],
-                "username": live_user["username"],
-                "role": live_user["role"],
-                "player_name": live_user.get("player_name"),
-                "project_ids": live_user.get("project_ids", [])
-            }
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Session expired")
     except Exception:
@@ -173,12 +158,6 @@ def check_project_access(user: dict, project_id: str):
 @app.get("/", response_class=FileResponse)
 async def serve_app(request: Request):
     return FileResponse(BASE_DIR / "templates" / "index.html")
-
-@app.get("/api/config")
-def get_app_config():
-    return {
-        "env": APP_ENV
-    }
 
 # --- Auth Endpoints ---
 class LoginPayload(BaseModel):
@@ -213,14 +192,17 @@ class UserCreatePayload(BaseModel):
     player_name: Optional[str] = None
 
 class UserUpdatePayload(BaseModel):
+    password: Optional[str] = None
     role: Optional[str] = None
     project_ids: Optional[List[str]] = None
     player_name: Optional[str] = None
-    password: Optional[str] = None
 
-class ResetPasswordPayload(BaseModel):
-    password: str
-
+@app.get("/api/config")
+def get_app_config():
+    return {
+        "env": APP_ENV
+    }
+    
 @app.get("/api/admin/users")
 def list_users(user: dict = Depends(get_current_user)):
     if user["role"] != "admin":
@@ -266,57 +248,31 @@ def create_user(payload: UserCreatePayload, user: dict = Depends(get_current_use
 def update_user(user_id: str, payload: UserUpdatePayload, user: dict = Depends(get_current_user)):
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin role required")
+
     db = read_db()
     target = next((u for u in db["users"] if u["id"] == user_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if payload.role is not None:
+    if payload.password:
+        if len(payload.password) < 4:
+            raise HTTPException(status_code=400, detail="Password (min 4 chars) required")
+        hashed_pw = bcrypt.hashpw(payload.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        target["password_hash"] = hashed_pw
+
+    if payload.role:
         if payload.role not in ["admin", "coach", "viewer", "player"]:
             raise HTTPException(status_code=400, detail="Invalid role specified")
         target["role"] = payload.role
 
-    if target["role"] in ["admin", "player"]:
-        target["project_ids"] = ["*"]
-    elif payload.project_ids is not None:
-        target["project_ids"] = payload.project_ids
-
     if payload.player_name is not None:
         target["player_name"] = payload.player_name if target["role"] == "player" else None
 
-    if target["role"] == "player" and not target.get("player_name"):
-        raise HTTPException(status_code=400, detail="Player accounts must be assigned to a player")
-
-    if payload.password and len(payload.password.strip()) > 0:
-        if len(payload.password.strip()) < 4:
-            raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
-        target["password_hash"] = bcrypt.hashpw(payload.password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    if payload.project_ids is not None:
+        target["project_ids"] = ["*"] if target["role"] in ["admin", "player"] else payload.project_ids
 
     write_db(db)
-    return {
-        "status": "updated",
-        "user": {
-            "id": target["id"],
-            "username": target["username"],
-            "role": target["role"],
-            "player_name": target.get("player_name"),
-            "project_ids": target.get("project_ids", [])
-        }
-    }
-
-@app.post("/api/admin/users/{user_id}/reset-password")
-def reset_user_password(user_id: str, payload: ResetPasswordPayload, user: dict = Depends(get_current_user)):
-    if user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin role required")
-    if len(payload.password.strip()) < 4:
-        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
-    db = read_db()
-    target = next((u for u in db["users"] if u["id"] == user_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    target["password_hash"] = bcrypt.hashpw(payload.password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    write_db(db)
-    return {"status": "password_reset", "id": target["id"]}
+    return {"status": "updated", "id": user_id}
 
 @app.delete("/api/admin/users/{user_id}")
 def delete_user(user_id: str, user: dict = Depends(get_current_user)):
@@ -493,7 +449,7 @@ def delete_roster(roster_name: str, user: dict = Depends(get_current_user)):
     write_db(db)
     return {"status": "deleted"}
 
-# --- Resilient Chunked Video Ingestion ---
+# --- Resilient Chunked Video Ingestion with Fast-Start Relocation ---
 @app.post("/api/projects/{project_id}/upload-chunk")
 async def upload_video_chunk(
     project_id: str,
@@ -578,7 +534,6 @@ class ClipCreatePayload(BaseModel):
     players: Optional[List[str]] = []
     player: Optional[str] = None
     annotation: Optional[str] = ""
-    outcome: Optional[str] = "neutral"
     notes: Optional[str] = ""
 
 class ClipUpdatePayload(BaseModel):
@@ -587,12 +542,8 @@ class ClipUpdatePayload(BaseModel):
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     timestamp: Optional[Union[float, str]] = None
-    outcome: Optional[str] = None
     annotation: Optional[str] = ""
     notes: Optional[str] = ""
-
-class ClipOutcomePayload(BaseModel):
-    outcome: str
 
 @app.post("/api/clips")
 def create_clip(payload: ClipCreatePayload, user: dict = Depends(get_current_user)):
@@ -620,10 +571,6 @@ def create_clip(payload: ClipCreatePayload, user: dict = Depends(get_current_use
         tagged_players.insert(0, payload.player)
     if not tagged_players:
         tagged_players = ["Unassigned / Team Play"]
-
-    valid_outcomes = {"positive", "neutral", "negative"}
-    raw_outcome = (payload.outcome or "neutral").lower()
-    outcome_val = raw_outcome if raw_outcome in valid_outcomes else "neutral"
 
     clip_id = uuid.uuid4().hex[:8]
     clean_player_slug = "_".join([sanitize_for_filename(p, default="Player") for p in tagged_players[:2]])
@@ -678,7 +625,6 @@ def create_clip(payload: ClipCreatePayload, user: dict = Depends(get_current_use
         "category": tags[0],
         "players": tagged_players,
         "player": tagged_players[0],
-        "outcome": outcome_val,
         "annotation": (payload.annotation or "").strip()[:100],
         "notes": payload.notes or "",
         "start_time": round(payload.start_time, 2),
@@ -701,18 +647,18 @@ def update_clip(clip_id: str, payload: ClipUpdatePayload, user: dict = Depends(g
     if user["role"] in ["viewer", "player"]:
         raise HTTPException(status_code=403, detail="Permission denied to edit clips")
 
-    tags = [t.strip() for t in payload.categories if t.strip()] or ["Play"]
-    pls = [p.strip() for p in payload.players if p.strip()] or ["Unassigned / Team Play"]
+    tags = [t.strip() for t in payload.categories if t.strip()]
+    if not tags:
+        tags = ["Play"]
+
+    pls = [p.strip() for p in payload.players if p.strip()]
+    if not pls:
+        pls = ["Unassigned / Team Play"]
 
     clip["categories"] = tags
     clip["category"] = tags[0]
     clip["players"] = pls
     clip["player"] = pls[0]
-
-    if payload.outcome is not None:
-        valid_outcomes = {"positive", "neutral", "negative"}
-        raw_outcome = payload.outcome.lower()
-        clip["outcome"] = raw_outcome if raw_outcome in valid_outcomes else "neutral"
     clip["annotation"] = (payload.annotation or "").strip()[:100]
     clip["notes"] = payload.notes or ""
 
@@ -730,23 +676,6 @@ def update_clip(clip_id: str, payload: ClipUpdatePayload, user: dict = Depends(g
     if clip.get("start_time") is not None and clip.get("end_time") is not None:
         clip["duration"] = round(max(0.0, clip["end_time"] - clip["start_time"]), 2)
 
-    write_db(db)
-    return clip
-
-@app.patch("/api/clips/{clip_id}/outcome")
-def set_clip_outcome(clip_id: str, payload: ClipOutcomePayload, user: dict = Depends(get_current_user)):
-    db = read_db()
-    clip = next((c for c in db["clips"] if c["id"] == clip_id), None)
-    if not clip:
-        raise HTTPException(status_code=404, detail="Clip not found")
-
-    check_project_access(user, clip["project_id"])
-    if user["role"] in ["viewer", "player"]:
-        raise HTTPException(status_code=403, detail="Permission denied to edit clips")
-
-    valid_outcomes = {"positive", "neutral", "negative"}
-    raw_outcome = payload.outcome.lower()
-    clip["outcome"] = raw_outcome if raw_outcome in valid_outcomes else "neutral"
     write_db(db)
     return clip
 
@@ -829,6 +758,10 @@ class ReelCreatePayload(BaseModel):
     title: str
     description: Optional[str] = ""
 
+class ReelUpdatePayload(BaseModel):
+    title: str
+    description: Optional[str] = ""
+
 class ReelUpdateClipsPayload(BaseModel):
     clip_ids: List[str]
 
@@ -854,6 +787,20 @@ def create_reel(payload: ReelCreatePayload, user: dict = Depends(get_current_use
     write_db(db)
     return new_reel
 
+@app.put("/api/reels/{reel_id}")
+def update_reel(reel_id: str, payload: ReelUpdatePayload, user: dict = Depends(get_current_user)):
+    if user["role"] in ["viewer", "player"]:
+        raise HTTPException(status_code=403, detail="Permission denied to modify reels")
+    db = read_db()
+    reel = next((r for r in db["reels"] if r["id"] == reel_id), None)
+    if not reel:
+        raise HTTPException(status_code=404, detail="Reel not found")
+
+    reel["title"] = payload.title.strip()
+    reel["description"] = payload.description.strip()
+    write_db(db)
+    return reel
+
 @app.get("/api/reels/{reel_id}")
 def get_reel(reel_id: str, user: dict = Depends(get_current_user)):
     db = read_db()
@@ -867,20 +814,6 @@ def get_reel(reel_id: str, user: dict = Depends(get_current_user)):
         "reel": reel,
         "clips": ordered_clips
     }
-
-@app.put("/api/reels/{reel_id}")
-def update_reel(reel_id: str, payload: ReelCreatePayload, user: dict = Depends(get_current_user)):
-    if user["role"] in ["viewer", "player"]:
-        raise HTTPException(status_code=403, detail="Permission denied to modify reels")
-    db = read_db()
-    reel = next((r for r in db["reels"] if r["id"] == reel_id), None)
-    if not reel:
-        raise HTTPException(status_code=404, detail="Reel not found")
-    
-    reel["title"] = payload.title.strip()
-    reel["description"] = payload.description.strip()
-    write_db(db)
-    return reel
 
 @app.put("/api/reels/{reel_id}/clips")
 def update_reel_clips(reel_id: str, payload: ReelUpdateClipsPayload, user: dict = Depends(get_current_user)):
@@ -1109,17 +1042,16 @@ def export_project_clips_zip(project_id: str, category: Optional[str] = None, us
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         zip_file.writestr("metadata.json", json.dumps(clips, indent=2))
-        csv_header = "ID,Sport,Categories,Players,Outcome,Filename,Start_Sec,End_Sec,Duration_Sec,Annotation,Created_By\n"
+        csv_header = "ID,Sport,Categories,Players,Filename,Start_Sec,End_Sec,Duration_Sec,Annotation,Created_By\n"
         
         csv_rows = []
         for c in clips:
             cats = ";".join(c.get("categories", [c.get("category", "")]))
             pls = ";".join(c.get("players", [c.get("player", "")]))
             sp = c.get("sport", "Basketball")
-            outc = c.get("outcome", "neutral")
             annot = (c.get("annotation", "") or "").replace('"', '""')
             csv_rows.append(
-                f'{c["id"]},{sp},"{cats}","{pls}",{outc},{c["filename"]},{c["start_time"]},{c["end_time"]},{c["duration"]},"{annot}",{c["created_by"]}'
+                f'{c["id"]},{sp},"{cats}","{pls}",{c["filename"]},{c["start_time"]},{c["end_time"]},{c["duration"]},"{annot}",{c["created_by"]}'
             )
         zip_file.writestr("summary.csv", csv_header + "\n".join(csv_rows))
 
