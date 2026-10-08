@@ -928,6 +928,100 @@ def delete_player_photo(player_name: str, user: dict = Depends(get_current_user)
 
     return {"status": "deleted", "player_name": clean_player}
 
+# --- Backup & Restore (Admin Only) ---
+@app.get("/api/admin/backup")
+def download_backup(user: dict = Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    db = read_db()
+    export_payload = {
+        "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "exported_by": user["username"],
+        "app": "Sports Film Room Analyzer",
+        "version": 1,
+        "store": db
+    }
+
+    payload_bytes = json.dumps(export_payload, indent=2).encode("utf-8")
+    timestamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+    filename = f"film_room_backup_{timestamp}.json"
+
+    return StreamingResponse(
+        io.BytesIO(payload_bytes),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(payload_bytes))
+        }
+    )
+
+
+@app.post("/api/admin/restore")
+async def restore_backup(
+    backup: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    raw = await backup.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Uploaded backup file is empty")
+
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid backup file: not valid JSON")
+
+    # Support both the wrapped export format and a raw store dump
+    if isinstance(parsed, dict) and "store" in parsed and isinstance(parsed["store"], dict):
+        restored = parsed["store"]
+    elif isinstance(parsed, dict) and "users" in parsed and "projects" in parsed:
+        restored = parsed
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid backup structure: missing 'store' or required top-level keys"
+        )
+
+    # Basic structural validation
+    required_keys = ["users", "projects", "clips"]
+    missing = [k for k in required_keys if k not in restored]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Backup missing required sections: {', '.join(missing)}"
+        )
+
+    # Safety snapshot of current store before overwrite
+    try:
+        if DB_FILE.exists():
+            safety_name = f"pre_restore_{time.strftime('%Y%m%d_%H%M%S', time.gmtime())}.json"
+            shutil.copy2(DB_FILE, BACKUP_DIR / safety_name)
+    except Exception:
+        pass
+
+    # Normalize optional collections so downstream code doesn't break
+    restored.setdefault("reels", [])
+    restored.setdefault("rosters", [])
+    restored.setdefault("player_photos", {})
+
+    write_db(restored)
+
+    return {
+        "status": "restored",
+        "counts": {
+            "users": len(restored.get("users", [])),
+            "projects": len(restored.get("projects", [])),
+            "clips": len(restored.get("clips", [])),
+            "reels": len(restored.get("reels", [])),
+            "rosters": len(restored.get("rosters", []))
+        },
+        "restored_by": user["username"]
+    }
+
+
 def cleanup_temp_files(*paths: Path):
     for p in paths:
         if p.exists():

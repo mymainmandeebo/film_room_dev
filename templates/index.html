@@ -2904,6 +2904,153 @@
     document.getElementById('logoutBtn').onclick = logout;
 
     // ============================================================
+    // --- BACKUP & RESTORE (ADMIN) ---
+    // ============================================================
+    async function downloadBackup() {
+      const btn = document.getElementById('btnDownloadBackup');
+      const statusMsg = document.getElementById('restoreStatusMsg');
+      let originalHtml = '';
+
+      if (btn) {
+        originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-wait');
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="font-size: 16px;">progress_activity</span> Preparing...`;
+      }
+
+      try {
+        const res = await fetch('/api/admin/backup', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: `Server error (${res.status})` }));
+          throw new Error(err.detail || 'Backup download failed');
+        }
+
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error('Backup file is empty');
+
+        // Prefer server-provided filename, fall back to timestamped default
+        let filename = `film_room_backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_')}.json`;
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) filename = match[1];
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 1500);
+
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-green-600 dark:text-green-400";
+          statusMsg.innerText = `Backup downloaded: ${filename}`;
+        }
+      } catch (err) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = `Backup failed: ${err.message}`;
+        } else {
+          alert(`Backup failed: ${err.message}`);
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+          btn.innerHTML = originalHtml;
+        }
+      }
+    }
+
+    async function restoreBackup(file) {
+      const statusMsg = document.getElementById('restoreStatusMsg');
+
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = "Please select a .json backup file";
+        }
+        return;
+      }
+
+      if (!confirm(
+        "Restore from backup?\n\n" +
+        "This will OVERWRITE all current users, games, rosters, clips, and reels with the contents of this backup file.\n\n" +
+        "A safety snapshot of the current store will be saved to data/backups/ before overwriting.\n\n" +
+        "Continue?"
+      )) return;
+
+      const formData = new FormData();
+      formData.append('backup', file);
+
+      if (statusMsg) {
+        statusMsg.className = "text-xs font-medium text-md-tertiary dark:text-md-dark-tertiary";
+        statusMsg.innerText = "Restoring backup...";
+      }
+
+      try {
+        const res = await fetch('/api/admin/restore', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.detail || `Restore failed (${res.status})`);
+        }
+
+        const c = data.counts || {};
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-green-600 dark:text-green-400";
+          statusMsg.innerText = `Restore complete. ${c.users || 0} users, ${c.projects || 0} games, ${c.clips || 0} clips. Reloading...`;
+        }
+
+        // Reload everything with fresh state from the restored store
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = `Restore failed: ${err.message}`;
+        } else {
+          alert(`Restore failed: ${err.message}`);
+        }
+      }
+    }
+
+    // Attach backup/restore listeners once DOM is ready
+    (function wireBackupRestore() {
+      const downloadBtn = document.getElementById('btnDownloadBackup');
+      const restoreInput = document.getElementById('restoreFileInput');
+
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          downloadBackup();
+        });
+      }
+
+      if (restoreInput) {
+        restoreInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          restoreBackup(file);
+          // Reset so selecting the same file again re-triggers change
+          e.target.value = '';
+        });
+      }
+    })();
+
+    // ============================================================
     // --- PROJECTS MANAGEMENT ---
     // ============================================================
     async function loadProjects() {
