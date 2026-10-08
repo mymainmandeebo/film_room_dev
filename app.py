@@ -958,9 +958,11 @@ def backup_all_data(user: dict = Depends(get_current_user)):
         if DB_FILE.exists():
             zf.write(DB_FILE, arcname="store.json")
 
-        # 2. Include all media directories preserving the relative layout under data/
+        # 2. Include media directories preserving the relative layout under data/.
+        #    NOTE: "uploads" (the full-length game tapes) is intentionally excluded
+        #    because those files are very large and make the backup slow. Clips,
+        #    reels, and player photos are still included.
         media_dirs = {
-            "uploads": UPLOAD_DIR,
             "clips": CLIPS_DIR,
             "reels": REELS_DIR,
             "players": PLAYERS_DIR,
