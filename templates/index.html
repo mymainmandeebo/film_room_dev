@@ -634,8 +634,6 @@
         </h4>
         <div id="usersList" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
       </div>
-    </div>
-  </div>
 
   <!-- ================= CREATE / EDIT PROJECT MODAL ================= -->
   <div id="projectModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm max-h-[92vh] overflow-y-auto">
@@ -800,6 +798,33 @@
           <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
           Save Preferences
         </button>
+      </div>
+
+      <!-- Backup & Restore (Admin) -->
+      <div id="backupRestoreSection" class="hidden bg-md-surface-container dark:bg-md-dark-surface-container p-4 rounded-md-md flex flex-col gap-3 border border-md-outline-variant dark:border-md-dark-outline-variant mt-1">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-medium text-md-tertiary dark:text-md-dark-tertiary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size: 18px;">backup</span>
+            Backup & Restore
+          </h4>
+          <span class="text-[11px] font-mono text-md-on-surface-variant dark:text-md-dark-on-surface-variant">Admin only</span>
+        </div>
+        <p class="text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant leading-relaxed">
+          Export the full data store (users, games, rosters, clip metadata, reels, player photos mapping) <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">plus all sliced clips</span> as a single ZIP file.
+          Original game tapes are <span class="font-semibold text-md-on-surface dark:text-md-dark-on-surface">not</span> included — back up the <code class="font-mono text-[10px] bg-md-surface-container-high dark:bg-md-dark-surface-container-high px-1 py-0.5 rounded">data/uploads/</code> folder separately if needed.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnDownloadBackup" class="md-btn-filled bg-md-primary dark:bg-md-dark-primary text-md-on-primary dark:text-md-dark-on-primary !py-2 !px-3.5 !text-xs">
+            <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+            Download Backup
+          </button>
+          <label class="md-btn-outlined border-md-tertiary dark:border-md-dark-tertiary text-md-tertiary dark:text-md-dark-tertiary !py-2 !px-3.5 !text-xs cursor-pointer flex items-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 16px;">upload_file</span>
+            Restore From File
+            <input type="file" id="restoreFileInput" accept=".zip,.json,application/zip,application/json" class="hidden">
+          </label>
+        </div>
+        <p id="restoreStatusMsg" class="text-xs font-medium hidden"></p>
       </div>
     </div>
   </div>
@@ -2730,6 +2755,11 @@
     document.getElementById('openSettingsBtn').onclick = () => {
       updateSettingsUI();
       loadSportIntoEditor(currentSport);
+
+      const backupSection = document.getElementById('backupRestoreSection');
+      if (backupSection) {
+        backupSection.classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+      }
       document.getElementById('settingsModal').classList.remove('hidden');
     };
     document.getElementById('closeSettingsBtn').onclick = () => document.getElementById('settingsModal').classList.add('hidden');
@@ -2875,6 +2905,178 @@
       location.reload();
     }
     document.getElementById('logoutBtn').onclick = logout;
+
+    // ============================================================
+    // --- BACKUP & RESTORE (ADMIN) ---
+    // ============================================================
+    async function downloadBackup() {
+      const btn = document.getElementById('btnDownloadBackup');
+      const statusMsg = document.getElementById('restoreStatusMsg');
+      let originalHtml = '';
+
+      if (btn) {
+        originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-wait');
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="font-size: 16px;">progress_activity</span> Zipping clips...`;
+      }
+
+      try {
+        const res = await fetch('/api/admin/backup', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: `Server error (${res.status})` }));
+          throw new Error(err.detail || 'Backup download failed');
+        }
+
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error('Backup file is empty');
+
+        // Read clip count from response headers if present
+        const clipCount = res.headers.get('X-Clip-Count');
+        const missingClips = res.headers.get('X-Missing-Clip-Count');
+
+        // Prefer server-provided filename, fall back to timestamped default
+        let filename = `film_room_backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '_')}.zip`;
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) filename = match[1];
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 1500);
+
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-green-600 dark:text-green-400";
+          const clipInfo = clipCount !== null
+            ? ` (${clipCount} clip${clipCount === '1' ? '' : 's'} bundled${missingClips && missingClips !== '0' ? `, ${missingClips} missing on disk` : ''})`
+            : '';
+          statusMsg.innerText = `Backup downloaded: ${filename}${clipInfo}`;
+        }
+      } catch (err) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = `Backup failed: ${err.message}`;
+        } else {
+          alert(`Backup failed: ${err.message}`);
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-wait');
+          btn.innerHTML = originalHtml;
+        }
+      }
+    }
+
+    async function restoreBackup(file) {
+      const statusMsg = document.getElementById('restoreStatusMsg');
+
+      if (!file) return;
+      const lowerName = file.name.toLowerCase();
+      const isZip = lowerName.endsWith('.zip');
+      const isJson = lowerName.endsWith('.json');
+      if (!isZip && !isJson) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = "Please select a .zip or .json backup file";
+        }
+        return;
+      }
+
+      const restoreWarning = isZip
+        ? "Restore from backup?\n\n" +
+          "This will OVERWRITE all current users, games, rosters, clips, and reels with the contents of this backup file, " +
+          "and REPLACE clip files on disk with the ones bundled in the ZIP.\n\n" +
+          "Your current admin account's password will be preserved. A safety snapshot of the current store will be saved to data/backups/ before overwriting.\n\n" +
+          "Continue?"
+        : "Restore from JSON backup (no clips)?\n\n" +
+          "This will OVERWRITE all current users, games, rosters, clips, and reels with the contents of this backup file. " +
+          "Clip video files will NOT be restored from a .json-only backup.\n\n" +
+          "A safety snapshot of the current store will be saved to data/backups/ before overwriting.\n\n" +
+          "Continue?";
+
+      if (!confirm(restoreWarning)) return;
+
+      const formData = new FormData();
+      formData.append('backup', file);
+
+      if (statusMsg) {
+        statusMsg.className = "text-xs font-medium text-md-tertiary dark:text-md-dark-tertiary";
+        statusMsg.innerText = isZip ? "Restoring backup and extracting clips..." : "Restoring backup...";
+      }
+
+      try {
+        const res = await fetch('/api/admin/restore', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.detail || `Restore failed (${res.status})`);
+        }
+
+        const c = data.counts || {};
+        const clipsExtracted = data.clips_extracted || 0;
+        const clipErrors = data.clip_errors || [];
+        if (statusMsg) {
+          const clipLine = isZip
+            ? ` ${clipsExtracted} clip file${clipsExtracted === 1 ? '' : 's'} extracted.`
+            : '';
+          const errLine = clipErrors.length > 0 ? ` (${clipErrors.length} clip warning${clipErrors.length === 1 ? '' : 's'})` : '';
+          statusMsg.className = clipErrors.length > 0
+            ? "text-xs font-medium text-yellow-600 dark:text-yellow-400"
+            : "text-xs font-medium text-green-600 dark:text-green-400";
+          statusMsg.innerText = `Restore complete. ${c.users || 0} users, ${c.projects || 0} games, ${c.clips || 0} clips.${clipLine}${errLine} Reloading...`;
+        }
+
+        // Reload everything with fresh state from the restored store
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        if (statusMsg) {
+          statusMsg.className = "text-xs font-medium text-md-error dark:text-md-dark-error";
+          statusMsg.innerText = `Restore failed: ${err.message}`;
+        } else {
+          alert(`Restore failed: ${err.message}`);
+        }
+      }
+    }
+
+    // Attach backup/restore listeners once DOM is ready
+    (function wireBackupRestore() {
+      const downloadBtn = document.getElementById('btnDownloadBackup');
+      const restoreInput = document.getElementById('restoreFileInput');
+
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          downloadBackup();
+        });
+      }
+
+      if (restoreInput) {
+        restoreInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          restoreBackup(file);
+          // Reset so selecting the same file again re-triggers change
+          e.target.value = '';
+        });
+      }
+    })();
 
     // ============================================================
     // --- PROJECTS MANAGEMENT ---
@@ -4506,6 +4708,35 @@
     window.addEventListener('touchend', endDraw);
 
     checkAuth();
+
+    async function applyEnvironmentLabel() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const config = await res.json();
+        const env = (config.env || 'PROD').toUpperCase();
+
+        if (env === 'DEV') {
+          document.title = '[DEV] Sports Film Room';
+        } else {
+          document.title = 'Sports Film Room';
+        }
+
+        const badge = document.getElementById('envBadge');
+        if (badge) {
+          if (env === 'DEV') {
+            badge.innerText = 'DEV';
+            badge.className = 'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-500 border border-amber-500/40 inline-block';
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load environment config:', err);
+      }
+    }
+
+    applyEnvironmentLabel();
   </script>
 </body>
 </html>
