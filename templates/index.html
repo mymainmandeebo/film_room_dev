@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -1318,6 +1319,7 @@
             Mark Event (K)
           </button>
 
+          <!-- Volume control moved here, on the same row as the play button and mark event -->
           <div class="flex items-center gap-3 ml-auto">
             <div class="flex items-center gap-2 bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant px-3 py-1.5 rounded-full">
               <button id="muteBtn" class="text-md-on-surface-variant dark:text-md-dark-on-surface-variant hover:text-md-primary dark:hover:text-md-dark-primary transition !p-1" title="Toggle Mute (Key: M)">
@@ -1326,20 +1328,6 @@
               <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" class="w-16 sm:w-24 md-slider bg-md-surface-container-highest dark:bg-md-dark-surface-container-highest">
               <span id="volumePct" class="font-mono text-xs text-md-on-surface-variant dark:text-md-dark-on-surface-variant w-8 text-right hidden sm:inline">100%</span>
             </div>
-
-            <select id="playbackRate" class="bg-md-surface-container-high dark:bg-md-dark-surface-container-high border border-md-outline-variant dark:border-md-dark-outline-variant rounded-full px-3 py-2 text-sm font-medium text-md-on-surface dark:text-md-dark-on-surface min-h-[40px]">
-              <option value="0.25">0.25x</option>
-              <option value="0.5">0.5x</option>
-              <option value="1" selected>1.0x</option>
-              <option value="1.5">1.5x</option>
-              <option value="2.0">2.0x</option>
-            </select>
-            <button id="telestrationToggle" class="md-btn-filled bg-md-tertiary dark:bg-md-dark-tertiary text-md-on-tertiary dark:text-md-dark-on-tertiary !py-2 !px-3.5 !rounded-full" title="Toggle Drawing Mode">
-              <span class="material-symbols-outlined" style="font-size: 20px;">draw</span>
-            </button>
-            <button id="clearDrawingBtn" class="md-btn-text text-md-on-surface-variant dark:text-md-dark-on-surface-variant !py-2 !px-3.5 !rounded-full" title="Clear Drawings">
-              <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
-            </button>
           </div>
         </div>
       </div>
